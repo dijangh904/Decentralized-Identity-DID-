@@ -10,7 +10,8 @@ import {
   MenuItem,
   Chip,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Divider
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -24,7 +25,7 @@ import {
   DarkMode
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 
 const Navbar = () => {
   const theme = useTheme();

@@ -28,7 +28,7 @@ import {
   CloudQueue
 } from '@mui/icons-material';
 import { stellarAPI } from '../services/api';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);

@@ -5,6 +5,9 @@ import { CssBaseline, Box } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// Contexts
+import { WalletProvider } from './contexts/WalletContext';
+
 // Components
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
@@ -73,33 +76,35 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <Navbar />
-          <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/create-did" element={<CreateDID />} />
-              <Route path="/resolve-did" element={<ResolveDID />} />
-              <Route path="/credentials" element={<Credentials />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/contracts" element={<Contracts />} />
-            </Routes>
+      <WalletProvider>
+        <Router>
+          <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Navbar />
+            <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/create-did" element={<CreateDID />} />
+                <Route path="/resolve-did" element={<ResolveDID />} />
+                <Route path="/credentials" element={<Credentials />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/contracts" element={<Contracts />} />
+              </Routes>
+            </Box>
           </Box>
-        </Box>
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="dark"
-        />
-      </Router>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="dark"
+          />
+        </Router>
+      </WalletProvider>
     </ThemeProvider>
   );
 }

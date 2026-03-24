@@ -34,7 +34,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { toast } from 'react-toastify';
 import { stellarAPI } from '../services/api';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 import { handleApiError } from '../utils/errorHandler';
 import ErrorDisplay from '../components/ErrorDisplay';
 
