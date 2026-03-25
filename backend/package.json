@@ -31,7 +31,7 @@
     "express-rate-limit": "^6.8.1",
     "helmet": "^7.0.0",
     "joi": "^17.9.2",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^7.4.0",
     "morgan": "^1.10.0",
     "node-jose": "^2.2.0",
@@ -43,11 +43,22 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.3",
+    "fast-check": "^4.6.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
     "supertest": "^6.3.3"
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000,
+    "setupFiles": [
+      "<rootDir>/src/__tests__/setup.js"
+    ],
+    "moduleNameMapper": {
+      ".*/contracts/stellar/DIDContract": "<rootDir>/src/__tests__/__mocks__/DIDContract.js"
+    }
   }
 }

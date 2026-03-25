@@ -1,34 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#667eea" />
-    <meta name="description" content="Stellar DID Platform - Decentralized Identity on Stellar Network" />
+    <meta
+      name="description"
+      content="Stellar DID Platform - Decentralized Identity on Stellar Network"
+    />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://stellar-did-platform.com/" />
     <meta property="og:title" content="Stellar DID Platform" />
-    <meta property="og:description" content="Decentralized Identity platform built on Stellar network" />
+    <meta
+      property="og:description"
+      content="Decentralized Identity platform built on Stellar network"
+    />
     <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+
+    <!-- Mobile wallet deep link support -->
+    <!-- The did-marketplace:// URI scheme is used for mobile wallet integration.
+         Mobile wallets can open deep links of the form:
+         did-marketplace://qr?payload=<base64url-encoded-QRPayload>
+         to resolve DIDs, verify credentials, or initiate wallet connections. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://stellar-did-platform.com/" />
     <meta property="twitter:title" content="Stellar DID Platform" />
-    <meta property="twitter:description" content="Decentralized Identity platform built on Stellar network" />
+    <meta
+      property="twitter:description"
+      content="Decentralized Identity platform built on Stellar network"
+    />
     <meta property="twitter:image" content="%PUBLIC_URL%/og-image.png" />
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
     <title>Stellar DID Platform</title>
-    
+
     <style>
       /* Loading screen */
       #loading-screen {
@@ -44,9 +61,9 @@
         justify-content: center;
         z-index: 9999;
         color: white;
-        font-family: 'Inter', sans-serif;
+        font-family: "Inter", sans-serif;
       }
-      
+
       .loading-spinner {
         width: 50px;
         height: 50px;
@@ -56,18 +73,22 @@
         animation: spin 1s linear infinite;
         margin-bottom: 20px;
       }
-      
+
       @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
-      
+
       .loading-text {
         font-size: 1.2rem;
         font-weight: 500;
         margin-bottom: 10px;
       }
-      
+
       .loading-subtitle {
         font-size: 0.9rem;
         opacity: 0.8;
@@ -76,40 +97,41 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    
+
     <!-- Loading Screen -->
     <div id="loading-screen">
       <div class="loading-spinner"></div>
       <div class="loading-text">Stellar DID Platform</div>
       <div class="loading-subtitle">Loading decentralized identity...</div>
     </div>
-    
+
     <div id="root"></div>
-    
+
     <script>
       // Hide loading screen when React app loads
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          const loadingScreen = document.getElementById('loading-screen');
+      window.addEventListener("load", function () {
+        setTimeout(function () {
+          const loadingScreen = document.getElementById("loading-screen");
           if (loadingScreen) {
-            loadingScreen.style.opacity = '0';
-            loadingScreen.style.transition = 'opacity 0.5s ease-out';
-            setTimeout(function() {
-              loadingScreen.style.display = 'none';
+            loadingScreen.style.opacity = "0";
+            loadingScreen.style.transition = "opacity 0.5s ease-out";
+            setTimeout(function () {
+              loadingScreen.style.display = "none";
             }, 500);
           }
         }, 1000);
       });
-      
+
       // Service Worker registration (for PWA)
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('%PUBLIC_URL%/service-worker.js')
-            .then(function(registration) {
-              console.log('SW registered: ', registration);
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker
+            .register("%PUBLIC_URL%/service-worker.js")
+            .then(function (registration) {
+              console.log("SW registered: ", registration);
             })
-            .catch(function(registrationError) {
-              console.log('SW registration failed: ', registrationError);
+            .catch(function (registrationError) {
+              console.log("SW registration failed: ", registrationError);
             });
         });
       }

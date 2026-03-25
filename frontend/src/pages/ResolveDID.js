@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -13,52 +13,66 @@ import {
   IconButton,
   Tooltip,
   Chip,
-  Grid
-} from '@mui/material';
+  Grid,
+  Modal,
+} from "@mui/material";
 import {
   Search,
   ContentCopy,
   AccountBalance,
   VerifiedUser,
   Schedule,
-  Info
-} from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { toast } from 'react-toastify';
-import { stellarAPI } from '../services/api';
-import { handleApiError } from '../utils/errorHandler';
-import ErrorDisplay from '../components/ErrorDisplay';
+  Info,
+  QrCodeScanner,
+  Close,
+} from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { toast } from "react-toastify";
+import { stellarAPI } from "../services/api";
+import { handleApiError } from "../utils/errorHandler";
+import ErrorDisplay from "../components/ErrorDisplay";
+import QRScanner from "../components/QRScanner";
 
 const schema = yup.object().shape({
-  did: yup.string()
-    .required('DID is required')
-    .matches(/^did:stellar:G[A-Z0-9]{55}$/, 'Invalid DID format. Expected: did:stellar:G...'),
+  did: yup
+    .string()
+    .required("DID is required")
+    .matches(
+      /^did:stellar:G[A-Z0-9]{55}$/,
+      "Invalid DID format. Expected: did:stellar:G...",
+    ),
 });
 
 const ResolveDID = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
-  const { control, handleSubmit, reset, formState: { errors } } = useForm({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      did: '',
+      did: "",
     },
   });
 
   const handleResolveDID = async (data) => {
     setLoading(true);
-    setError('');
+    setError("");
     setResult(null);
 
     try {
       const response = await stellarAPI.contracts.getDID(data.did);
-      
+
       setResult(response.data);
-      toast.success('DID resolved successfully!');
+      toast.success("DID resolved successfully!");
     } catch (err) {
       const errorInfo = handleApiError(err);
       setError(errorInfo);
@@ -70,7 +84,14 @@ const ResolveDID = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard!');
+    toast.success("Copied to clipboard!");
+  };
+
+  const handleScanResult = (payload) => {
+    setScannerOpen(false);
+    if (payload?.did) {
+      reset({ did: payload.did });
+    }
   };
 
   const formatDate = (dateString) => {
@@ -96,18 +117,35 @@ const ResolveDID = () => {
                   name="did"
                   control={control}
                   render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Decentralized Identifier (DID)"
-                      placeholder="did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.did}
-                      helperText={errors.did?.message || 'Format: did:stellar:G...'}
-                      InputProps={{
-                        startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
-                      }}
-                    />
+                    <Box
+                      sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}
+                    >
+                      <TextField
+                        {...field}
+                        label="Decentralized Identifier (DID)"
+                        placeholder="did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                        fullWidth
+                        margin="normal"
+                        error={!!errors.did}
+                        helperText={
+                          errors.did?.message || "Format: did:stellar:G..."
+                        }
+                        InputProps={{
+                          startAdornment: (
+                            <Search sx={{ mr: 1, color: "text.secondary" }} />
+                          ),
+                        }}
+                      />
+                      <Tooltip title="Scan QR Code">
+                        <IconButton
+                          onClick={() => setScannerOpen(true)}
+                          sx={{ mt: 2 }}
+                          aria-label="Scan QR code for DID"
+                        >
+                          <QrCodeScanner />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   )}
                 />
 
@@ -116,7 +154,9 @@ const ResolveDID = () => {
                   variant="contained"
                   size="large"
                   disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : <Search />}
+                  startIcon={
+                    loading ? <CircularProgress size={20} /> : <Search />
+                  }
                   sx={{ mt: 2 }}
                 >
                   Resolve DID
@@ -136,15 +176,22 @@ const ResolveDID = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Try these example DIDs (if available on testnet):
               </Typography>
-              
+
               {[
-                'did:stellar:GD5DQ6ZJ6G5ZQJQKQZQZQZQZQZQZQZQZQZQZQZQ',
-                'did:stellar:GA2GB6ZJ6G5ZQJQKQZQZQZQZQZQZQZQZQZQZQZQ',
+                "did:stellar:GD5DQ6ZJ6G5ZQJQKQZQZQZQZQZQZQZQZQZQZQZQ",
+                "did:stellar:GA2GB6ZJ6G5ZQJQKQZQZQZQZQZQZQZQZQZQZQZQ",
               ].map((did, index) => (
-                <Paper key={index} sx={{ p: 2, mb: 1, bgcolor: 'background.default', cursor: 'pointer' }}
+                <Paper
+                  key={index}
+                  sx={{
+                    p: 2,
+                    mb: 1,
+                    bgcolor: "background.default",
+                    cursor: "pointer",
+                  }}
                   onClick={() => reset({ did })}
                 >
-                  <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                  <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
                     {did}
                   </Typography>
                 </Paper>
@@ -159,7 +206,7 @@ const ResolveDID = () => {
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" mb={3}>
-                  <VerifiedUser sx={{ mr: 1, color: 'success.main' }} />
+                  <VerifiedUser sx={{ mr: 1, color: "success.main" }} />
                   <Typography variant="h6" color="success.main">
                     DID Document Resolved
                   </Typography>
@@ -168,16 +215,26 @@ const ResolveDID = () => {
                 {/* Basic Information */}
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
                         DID
                       </Typography>
                       <Box display="flex" alignItems="center">
-                        <Typography variant="body1" sx={{ fontFamily: 'monospace', mr: 1 }}>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontFamily: "monospace", mr: 1 }}
+                        >
                           {result.did}
                         </Typography>
                         <Tooltip title="Copy DID">
-                          <IconButton size="small" onClick={() => copyToClipboard(result.did)}>
+                          <IconButton
+                            size="small"
+                            onClick={() => copyToClipboard(result.did)}
+                          >
                             <ContentCopy fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -186,16 +243,26 @@ const ResolveDID = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
                         Owner
                       </Typography>
                       <Box display="flex" alignItems="center">
-                        <Typography variant="body1" sx={{ fontFamily: 'monospace', mr: 1 }}>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontFamily: "monospace", mr: 1 }}
+                        >
                           {result.owner}
                         </Typography>
                         <Tooltip title="Copy Owner">
-                          <IconButton size="small" onClick={() => copyToClipboard(result.owner)}>
+                          <IconButton
+                            size="small"
+                            onClick={() => copyToClipboard(result.owner)}
+                          >
                             <ContentCopy fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -204,25 +271,35 @@ const ResolveDID = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
                         Status
                       </Typography>
-                      <Chip 
-                        label={result.active ? 'Active' : 'Inactive'}
-                        color={result.active ? 'success' : 'error'}
+                      <Chip
+                        label={result.active ? "Active" : "Inactive"}
+                        color={result.active ? "success" : "error"}
                         size="small"
                       />
                     </Paper>
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
                         Created
                       </Typography>
                       <Box display="flex" alignItems="center">
-                        <Schedule sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                        <Schedule
+                          sx={{ mr: 1, fontSize: 16, color: "text.secondary" }}
+                        />
                         <Typography variant="body1">
                           {formatDate(result.created)}
                         </Typography>
@@ -232,8 +309,12 @@ const ResolveDID = () => {
 
                   {result.serviceEndpoint && (
                     <Grid item xs={12}>
-                      <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          gutterBottom
+                        >
                           Service Endpoint
                         </Typography>
                         <Box display="flex" alignItems="center">
@@ -241,7 +322,12 @@ const ResolveDID = () => {
                             {result.serviceEndpoint}
                           </Typography>
                           <Tooltip title="Copy Service Endpoint">
-                            <IconButton size="small" onClick={() => copyToClipboard(result.serviceEndpoint)}>
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                copyToClipboard(result.serviceEndpoint)
+                              }
+                            >
                               <ContentCopy fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -252,12 +338,22 @@ const ResolveDID = () => {
 
                   {result.updated && result.updated !== result.created && (
                     <Grid item xs={12}>
-                      <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          gutterBottom
+                        >
                           Last Updated
                         </Typography>
                         <Box display="flex" alignItems="center">
-                          <Schedule sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                          <Schedule
+                            sx={{
+                              mr: 1,
+                              fontSize: 16,
+                              color: "text.secondary",
+                            }}
+                          />
                           <Typography variant="body1">
                             {formatDate(result.updated)}
                           </Typography>
@@ -271,18 +367,26 @@ const ResolveDID = () => {
 
                 {/* Raw JSON */}
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    <Info sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    gutterBottom
+                  >
+                    <Info sx={{ verticalAlign: "middle", mr: 1 }} />
                     Raw DID Document
                   </Typography>
-                  <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                    <Typography variant="body2" component="pre" sx={{ 
-                      fontFamily: 'monospace', 
-                      fontSize: '0.8rem',
-                      overflowX: 'auto',
-                      maxHeight: '300px',
-                      overflowY: 'auto'
-                    }}>
+                  <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                    <Typography
+                      variant="body2"
+                      component="pre"
+                      sx={{
+                        fontFamily: "monospace",
+                        fontSize: "0.8rem",
+                        overflowX: "auto",
+                        maxHeight: "300px",
+                        overflowY: "auto",
+                      }}
+                    >
                       {JSON.stringify(result, null, 2)}
                     </Typography>
                   </Paper>
@@ -295,13 +399,37 @@ const ResolveDID = () => {
         {/* Error Display */}
         {error && (
           <Grid item xs={12}>
-            <ErrorDisplay 
-              error={error} 
-              onClose={() => setError(null)} 
-            />
+            <ErrorDisplay error={error} onClose={() => setError(null)} />
           </Grid>
         )}
       </Grid>
+
+      {/* QR Scanner Modal */}
+      <Modal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        aria-label="QR code scanner modal"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "95vw", sm: 480 },
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 2,
+          }}
+        >
+          <QRScanner
+            allowedTypes={["did"]}
+            onScan={handleScanResult}
+            onClose={() => setScannerOpen(false)}
+          />
+        </Box>
+      </Modal>
     </Box>
   );
 };

@@ -1,23 +1,24 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const dotenv = require('dotenv');
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const compression = require("compression");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const dotenv = require("dotenv");
 
 // Load environment variables
 dotenv.config();
 
 // Import routes and services
-const didRoutes = require('./routes/did');
-const credentialRoutes = require('./routes/credentials');
-const contractRoutes = require('./routes/contracts');
-const authRoutes = require('./routes/auth');
-const { logger, errorHandler } = require('./middleware');
-const { connectDatabase } = require('./utils/database');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./swagger');
+const didRoutes = require("./routes/did");
+const credentialRoutes = require("./routes/credentials");
+const contractRoutes = require("./routes/contracts");
+const authRoutes = require("./routes/auth");
+const qrRoutes = require("./routes/qr");
+const { logger, errorHandler } = require("./middleware");
+const { connectDatabase } = require("./utils/database");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger");
 
 // Initialize Express app
 const app = express();
@@ -30,70 +31,75 @@ app.use(compression());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === "test" ? 100000 : 100, // disable in test
 });
-app.use('/api', limiter);
+app.use("/api", limiter);
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  }),
+);
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Logging
-app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
+app.use(
+  morgan("combined", {
+    stream: { write: (message) => logger.info(message.trim()) },
+  }),
+);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
-    status: 'healthy',
-    service: 'stellar-did-backend',
-    version: '1.0.0',
-    network: process.env.STELLAR_NETWORK || 'TESTNET',
+    status: "healthy",
+    service: "stellar-did-backend",
+    version: "1.0.0",
+    network: process.env.STELLAR_NETWORK || "TESTNET",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 
 // API routes
-app.use('/api/v1/did', didRoutes);
-app.use('/api/v1/credentials', credentialRoutes);
-app.use('/api/v1/contracts', contractRoutes);
-app.use('/api/v1/auth', authRoutes);
+app.use("/api/v1/did", didRoutes);
+app.use("/api/v1/credentials", credentialRoutes);
+app.use("/api/v1/contracts", contractRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/qr", qrRoutes);
 
 // Swagger Documentation
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API documentation endpoint
-app.get('/api', (req, res) => {
+app.get("/api", (req, res) => {
   res.json({
-    name: 'Stellar DID Backend API',
-    version: '1.0.0',
-    description: 'Backend microservice for Stellar DID Platform',
+    name: "Stellar DID Backend API",
+    version: "1.0.0",
+    description: "Backend microservice for Stellar DID Platform",
     endpoints: {
-      did: '/api/v1/did',
-      credentials: '/api/v1/credentials',
-      contracts: '/api/v1/contracts',
-      auth: '/api/v1/auth',
-      health: '/health'
+      did: "/api/v1/did",
+      credentials: "/api/v1/credentials",
+      contracts: "/api/v1/contracts",
+      auth: "/api/v1/auth",
+      health: "/health",
     },
-    documentation: '/api/docs'
+    documentation: "/api/docs",
   });
 });
 
-
 // 404 handler
-app.use('*', (req, res) => {
+app.use("*", (req, res) => {
   res.status(404).json({
     success: false,
-    error: 'Not Found',
-    message: 'The requested endpoint was not found',
-    path: req.originalUrl
+    error: "Not Found",
+    message: "The requested endpoint was not found",
+    path: req.originalUrl,
   });
 });
 
@@ -101,13 +107,13 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received, shutting down gracefully");
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
+process.on("SIGINT", () => {
+  logger.info("SIGINT received, shutting down gracefully");
   process.exit(0);
 });
 
@@ -116,15 +122,15 @@ async function startServer() {
   try {
     // Connect to database
     await connectDatabase();
-    
+
     app.listen(PORT, () => {
       logger.info(`🚀 Stellar DID Backend running on port ${PORT}`);
-      logger.info(`📡 Network: ${process.env.STELLAR_NETWORK || 'TESTNET'}`);
+      logger.info(`📡 Network: ${process.env.STELLAR_NETWORK || "TESTNET"}`);
       logger.info(`🌐 API: http://localhost:${PORT}/api`);
       logger.info(`📚 Health: http://localhost:${PORT}/health`);
     });
   } catch (error) {
-    logger.error('Failed to start server:', error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 }
