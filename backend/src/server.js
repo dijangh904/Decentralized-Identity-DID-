@@ -19,12 +19,13 @@ const { connectDatabase } = require('./utils/database');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const GraphQLServer = require('./graphql/server');
+const { WebSocketManager, EVENTS } = require('./websocket');
 
 // Initialize Express app
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
 
-// Initialize GraphQL Server
+// Initialize GraphQL Server (creates the shared HTTP server internally)
 const graphqlServer = new GraphQLServer(app);
 
 // Security middleware
@@ -33,8 +34,8 @@ app.use(compression());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "test" ? 100000 : 100, // disable in test
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === "test" ? 100000 : 100,
 });
 app.use("/api", limiter);
 
@@ -74,7 +75,6 @@ app.use("/api/v1/did", didRoutes);
 app.use("/api/v1/credentials", credentialRoutes);
 app.use("/api/v1/contracts", contractRoutes);
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/qr", qrRoutes);
 
 // Swagger Documentation
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -91,10 +91,12 @@ app.get("/api", (req, res) => {
       contracts: '/api/v1/contracts',
       auth: '/api/v1/auth',
       graphql: '/graphql',
-      health: '/health'
+      health: '/health',
+      websocket: `ws://localhost:${PORT}/ws`,
     },
     documentation: '/api/docs',
-    graphqlPlayground: `http://localhost:${PORT}/graphql`
+    graphqlPlayground: `http://localhost:${PORT}/graphql`,
+    websocket: `ws://localhost:${PORT}/ws`,
   });
 });
 
@@ -111,14 +113,18 @@ app.use("*", (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Graceful shutdown
-process.on("SIGTERM", () => {
+// Graceful shutdown — close WebSocket connections before exiting
+let wsManager = null;
+
+process.on("SIGTERM", async () => {
   logger.info("SIGTERM received, shutting down gracefully");
+  if (wsManager) await wsManager.close();
   process.exit(0);
 });
 
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   logger.info("SIGINT received, shutting down gracefully");
+  if (wsManager) await wsManager.close();
   process.exit(0);
 });
 
@@ -128,16 +134,29 @@ async function startServer() {
     // Connect to database
     await connectDatabase();
 
-    // Initialize GraphQL server
+    // Initialize GraphQL — this creates the shared HTTP server
     await graphqlServer.initialize();
 
-    // Start the server with GraphQL
+    // Attach WebSocket to the same HTTP server GraphQL uses.
+    // This is the critical step: one HTTP server, two upgrade handlers.
+    // WebSocket connections arrive at ws://host/ws
+    // GraphQL/REST connections arrive at http://host/...
+    wsManager = new WebSocketManager(graphqlServer.httpServer);
+    wsManager.initialize();
+
+    // Expose wsManager so route handlers can broadcast events.
+    // Usage in a route: req.app.get('wsManager').broadcast(EVENTS.DID_CREATED, { ... })
+    app.set('wsManager', wsManager);
+    app.set('wsEvents', EVENTS);
+
+    // Start listening
     await graphqlServer.startServer(PORT);
 
     logger.info(`🚀 Stellar DID Backend running on port ${PORT}`);
     logger.info(`📡 Network: ${process.env.STELLAR_NETWORK || 'TESTNET'}`);
     logger.info(`🌐 REST API: http://localhost:${PORT}/api`);
     logger.info(`📊 GraphQL API: http://localhost:${PORT}/graphql`);
+    logger.info(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
     logger.info(`📚 Health: http://localhost:${PORT}/health`);
     logger.info(`📖 Documentation: http://localhost:${PORT}/api/docs`);
   } catch (error) {
@@ -146,9 +165,8 @@ async function startServer() {
   }
 }
 
-// Start the server
 if (require.main === module) {
   startServer();
 }
 
-module.exports = app;
+module.exports = { app, EVENTS };

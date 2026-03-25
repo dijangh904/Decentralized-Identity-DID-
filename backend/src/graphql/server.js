@@ -15,7 +15,9 @@ class GraphQLServer {
 
   async initialize() {
     try {
-      // Create HTTP server for GraphQL subscriptions
+      // Create HTTP server for GraphQL subscriptions.
+      // This is the single HTTP server the whole application uses —
+      // Express, Apollo, and WebSocket all share it.
       this.httpServer = createServer(this.app);
 
       // Create Apollo Server
@@ -54,8 +56,7 @@ class GraphQLServer {
             req,
             res,
             logger,
-            // Add any additional context here
-            user: req.user, // If using authentication
+            user: req.user,
             requestId: req.headers['x-request-id'] || 'unknown'
           };
         },
@@ -71,15 +72,12 @@ class GraphQLServer {
             extensions: err.extensions
           };
         },
-        validationRules: [
-          // Add custom validation rules if needed
-        ],
+        validationRules: [],
         debug: process.env.NODE_ENV === 'development'
       });
 
       await this.apolloServer.start();
-      
-      // Apply middleware to Express app
+
       this.apolloServer.applyMiddleware({
         app: this.app,
         path: '/graphql',
@@ -94,7 +92,7 @@ class GraphQLServer {
 
       logger.info('🚀 GraphQL Server initialized successfully');
       logger.info(`📡 GraphQL Playground: http://localhost:${process.env.BACKEND_PORT || 3001}/graphql`);
-      
+
       return this.httpServer;
     } catch (error) {
       logger.error('Failed to initialize GraphQL server:', error);
@@ -128,7 +126,7 @@ class GraphQLServer {
       if (this.apolloServer) {
         await this.apolloServer.stop();
       }
-      
+
       if (this.httpServer) {
         await new Promise((resolve) => {
           this.httpServer.close(resolve);
