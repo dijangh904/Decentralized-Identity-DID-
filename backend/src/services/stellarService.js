@@ -55,7 +55,7 @@ class StellarService {
       return accountData;
     } catch (error) {
       logger.error('Error fetching Stellar account:', error);
-      throw new Error('Failed to fetch Stellar account');
+      throw this.handleStellarError(error, 'Failed to fetch Stellar account');
     }
   }
 
@@ -74,7 +74,7 @@ class StellarService {
       return accounts;
     } catch (error) {
       logger.error('Error fetching Stellar accounts:', error);
-      throw error;
+      throw this.handleStellarError(error, 'Failed to fetch Stellar accounts');
     }
   }
 
@@ -114,7 +114,7 @@ class StellarService {
       return transactionData;
     } catch (error) {
       logger.error('Error fetching Stellar transaction:', error);
-      throw new Error('Failed to fetch Stellar transaction');
+      throw this.handleStellarError(error, 'Failed to fetch Stellar transaction');
     }
   }
 
@@ -170,7 +170,7 @@ class StellarService {
       }));
     } catch (error) {
       logger.error('Error fetching Stellar transactions:', error);
-      throw new Error('Failed to fetch Stellar transactions');
+      throw this.handleStellarError(error, 'Failed to fetch Stellar transactions');
     }
   }
 
@@ -183,7 +183,7 @@ class StellarService {
       return 0;
     } catch (error) {
       logger.error('Error fetching transaction count:', error);
-      throw error;
+      throw this.handleStellarError(error, 'Failed to fetch transaction count');
     }
   }
 
@@ -255,7 +255,7 @@ class StellarService {
       };
     } catch (error) {
       logger.error('Error creating Stellar transaction:', error);
-      throw new Error('Failed to create Stellar transaction');
+      throw this.handleStellarError(error, 'Failed to create Stellar transaction');
     }
   }
 
@@ -287,7 +287,7 @@ class StellarService {
       return transactionData;
     } catch (error) {
       logger.error('Error submitting Stellar transaction:', error);
-      throw new Error('Failed to submit Stellar transaction');
+      throw this.handleStellarError(error, 'Failed to submit Stellar transaction');
     }
   }
 
@@ -307,7 +307,7 @@ class StellarService {
       };
     } catch (error) {
       logger.error('Error fetching network stats:', error);
-      throw new Error('Failed to fetch network statistics');
+      throw this.handleStellarError(error, 'Failed to fetch network statistics');
     }
   }
 
@@ -376,6 +376,38 @@ class StellarService {
     } catch (error) {
       logger.error('Error publishing transaction event:', error);
     }
+  }
+
+  handleStellarError(error, defaultMessage) {
+    if (error.response && error.response.data) {
+      const { title, detail, extras } = error.response.data;
+      let messages = [];
+
+      if (title) messages.push(title);
+      if (detail) messages.push(detail);
+
+      if (extras && extras.result_codes) {
+        const codes = extras.result_codes;
+        let codesStr = [];
+        if (codes.transaction) codesStr.push(`Transaction: ${codes.transaction}`);
+        if (codes.operations && codes.operations.length > 0) {
+          codesStr.push(`Operations: ${codes.operations.join(', ')}`);
+        }
+        if (codesStr.length > 0) {
+          messages.push(`Result Codes: [${codesStr.join(' | ')}]`);
+        }
+      }
+
+      if (messages.length > 0) {
+        return new Error(messages.join('. '));
+      }
+    }
+
+    if (error.message && !error.message.includes('Request failed with status code')) {
+      return new Error(`${defaultMessage}: ${error.message}`);
+    }
+
+    return new Error(defaultMessage);
   }
 }
 
