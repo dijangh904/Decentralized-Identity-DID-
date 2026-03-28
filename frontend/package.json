@@ -27,6 +27,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:prod": "NODE_ENV=production react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
@@ -54,9 +55,11 @@
     ]
   },
   "devDependencies": {
+    "customize-cra": "^1.0.0",
     "eslint": "^8.45.0",
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "react-app-rewired": "^2.2.1",
     "sharp": "^0.34.5"
   },
   "proxy": "http://localhost:3001"
