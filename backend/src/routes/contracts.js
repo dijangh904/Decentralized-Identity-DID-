@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const ContractService = require('../services/contractService');
 const { authMiddleware, logger } = require('../middleware');
+const { validateEndpoint, sanitizeParams } = require('../middleware/inputValidation');
 
 const router = express.Router();
 const contractService = new ContractService();
@@ -122,19 +123,9 @@ router.post('/deploy', async (req, res, next) => {
  *       201:
  *         description: DID registered successfully
  */
-router.post('/register-did', async (req, res, next) => {
+router.post('/register-did', validateEndpoint('registerDID'), async (req, res, next) => {
   try {
-    const { error, value } = registerDIDSchema.validate(req.body);
-    
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation error',
-        details: error.details.map(d => d.message)
-      });
-    }
-
-    const { did, publicKey, serviceEndpoint, signerSecret } = value;
+    const { did, publicKey, serviceEndpoint, signerSecret } = req.body;
     
     logger.info('Registering DID on blockchain', { did });
     
@@ -203,19 +194,9 @@ router.put('/update-did', async (req, res, next) => {
  *       201:
  *         description: Credential issued successfully
  */
-router.post('/issue-credential', async (req, res, next) => {
+router.post('/issue-credential', validateEndpoint('issueCredential'), async (req, res, next) => {
   try {
-    const { error, value } = issueCredentialSchema.validate(req.body);
-    
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation error',
-        details: error.details.map(d => d.message)
-      });
-    }
-
-    const { issuerDID, subjectDID, credentialType, claims, signerSecret } = value;
+    const { issuerDID, subjectDID, credentialType, claims, signerSecret } = req.body;
     
     logger.info('Issuing credential on blockchain', {
       issuerDID,
@@ -251,16 +232,9 @@ router.post('/issue-credential', async (req, res, next) => {
  *       200:
  *         description: Credential revoked successfully
  */
-router.post('/revoke-credential', async (req, res, next) => {
+router.post('/revoke-credential', validateEndpoint('revokeCredential'), async (req, res, next) => {
   try {
     const { credentialId, signerSecret } = req.body;
-    
-    if (!credentialId || !signerSecret) {
-      return res.status(400).json({
-        success: false,
-        error: 'credentialId and signerSecret are required'
-      });
-    }
     
     logger.info('Revoking credential on blockchain', { credentialId });
     
@@ -294,7 +268,7 @@ router.post('/revoke-credential', async (req, res, next) => {
  *       404:
  *         description: DID not found
  */
-router.get('/did/:did', async (req, res, next) => {
+router.get('/did/:did', sanitizeParams, async (req, res, next) => {
   try {
     const { did } = req.params;
     
@@ -343,7 +317,7 @@ router.get('/did/:did', async (req, res, next) => {
  *       200:
  *         description: Credential retrieved successfully
  */
-router.get('/credential/:credentialId', async (req, res, next) => {
+router.get('/credential/:credentialId', sanitizeParams, async (req, res, next) => {
   try {
     const { credentialId } = req.params;
     
@@ -421,16 +395,9 @@ router.get('/owner-dids/:publicKey', async (req, res, next) => {
  *       200:
  *         description: Credential verified successfully
  */
-router.post('/verify-credential', async (req, res, next) => {
+router.post('/verify-credential', validateEndpoint('verifyCredential'), async (req, res, next) => {
   try {
     const { credentialId } = req.body;
-    
-    if (!credentialId) {
-      return res.status(400).json({
-        success: false,
-        error: 'credentialId is required'
-      });
-    }
     
     logger.info('Verifying credential on blockchain', { credentialId });
     
@@ -510,16 +477,9 @@ router.post('/create-account', async (req, res, next) => {
  *       200:
  *         description: Account funded successfully
  */
-router.post('/fund-account', async (req, res, next) => {
+router.post('/fund-account', validateEndpoint('fundAccount'), async (req, res, next) => {
   try {
     const { publicKey } = req.body;
-    
-    if (!publicKey) {
-      return res.status(400).json({
-        success: false,
-        error: 'publicKey is required'
-      });
-    }
     
     logger.info('Funding testnet account', { publicKey });
     

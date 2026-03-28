@@ -74,11 +74,11 @@ const Account = () => {
     };
   }, [wallet, reset]);
 
-  const fetchAccountInfo = async (publicKey, abortController, isMounted) => {
+  const fetchAccountInfo = async (publicKey, abortController, isMounted = true) => {
     if (!isMounted) return;
-    
+
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       const response = await stellarAPI.contracts.getAccount(publicKey);

@@ -60,11 +60,11 @@ const Contracts = () => {
     };
   }, []);
 
-  const fetchContractInfo = async (abortController, isMounted) => {
+  const fetchContractInfo = async (abortController, isMounted = true) => {
     if (!isMounted) return;
-    
+
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       const response = await stellarAPI.contracts.getInfo();
@@ -83,12 +83,12 @@ const Contracts = () => {
 
   const handleDeployContract = async () => {
     if (!deployerSecret) {
-      toast.error('Deployer secret key is required');
+      toast.error('Enter your Stellar secret key (starts with S) to deploy the contract. You can find it in your wallet settings.');
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       const response = await stellarAPI.contracts.deploy({

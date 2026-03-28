@@ -3,7 +3,7 @@ import secureStorage from "../utils/secureStorage";
 
 // Create axios instance with default configuration
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:3001/api/v1";
+  process.env.REACT_APP_API_URL || "/api/v1";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -104,7 +104,7 @@ export const stellarAPI = {
 
 // Health check
 export const healthCheck = () =>
-  api.get("/health", { baseURL: "http://localhost:3001" });
+  api.get("/health");
 
 // Utility functions
 export const setAuthToken = (token) => {

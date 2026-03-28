@@ -2,6 +2,28 @@ const { Server, Networks, TransactionBuilder, Operation, Asset } = require('stel
 const { logger } = require('../middleware');
 const redis = require('../utils/redis');
 
+// Custom error classes for better error handling
+class TransactionFailedError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'TransactionFailed';
+  }
+}
+
+class AccountNotFoundError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AccountNotFound';
+  }
+}
+
+class NetworkError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
 class StellarService {
   constructor() {
     this.server = new Server(process.env.STELLAR_HORIZON_URL || 'https://horizon-testnet.stellar.org');
@@ -379,32 +401,56 @@ class StellarService {
   }
 
   handleStellarError(error, defaultMessage) {
-    if (error.response && error.response.data) {
-      const { title, detail, extras } = error.response.data;
-      let messages = [];
-
-      if (title) messages.push(title);
-      if (detail) messages.push(detail);
-
-      if (extras && extras.result_codes) {
-        const codes = extras.result_codes;
-        let codesStr = [];
-        if (codes.transaction) codesStr.push(`Transaction: ${codes.transaction}`);
-        if (codes.operations && codes.operations.length > 0) {
-          codesStr.push(`Operations: ${codes.operations.join(', ')}`);
-        }
-        if (codesStr.length > 0) {
-          messages.push(`Result Codes: [${codesStr.join(' | ')}]`);
-        }
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data || {};
+      
+      if (status === 404) {
+        return new AccountNotFoundError('Account not found on the Stellar network');
       }
-
-      if (messages.length > 0) {
-        return new Error(messages.join('. '));
+      
+      if (status === 400 || status === 403 || status === 504) {
+        let errorMsg = defaultMessage;
+        
+        if (data.extras && data.extras.result_codes) {
+          const codes = data.extras.result_codes;
+          
+          if (codes.transaction === 'tx_bad_seq') {
+            errorMsg = 'bad_sequence: Transaction has a bad sequence number';
+          } else if (codes.transaction === 'tx_insufficient_balance' || (codes.operations && codes.operations.includes('op_underfunded'))) {
+            errorMsg = 'insufficient balance to complete this operation';
+          } else {
+             let messages = [];
+             if (data.title) messages.push(data.title);
+             if (data.detail) messages.push(data.detail);
+             let codesStr = [];
+             if (codes.transaction) codesStr.push(`Transaction: ${codes.transaction}`);
+             if (codes.operations && codes.operations.length > 0) {
+               codesStr.push(`Operations: ${codes.operations.join(', ')}`);
+             }
+             if (codesStr.length > 0) {
+               messages.push(`Result Codes: [${codesStr.join(' | ')}]`);
+             }
+             if (messages.length > 0) {
+               errorMsg = messages.join('. ');
+             }
+          }
+        }
+        return new TransactionFailedError(errorMsg);
+      }
+      
+      if (status >= 500) {
+        return new NetworkError('Stellar network is currently experiencing issues');
       }
     }
 
-    if (error.message && !error.message.includes('Request failed with status code')) {
-      return new Error(`${defaultMessage}: ${error.message}`);
+    if (error.message) {
+      if (error.message.includes('Network Error') || error.message.includes('timeout')) {
+        return new NetworkError('timeout: Connection to Stellar network failed');
+      }
+      if (!error.message.includes('Request failed with status code')) {
+        return new Error(`${defaultMessage}: ${error.message}`);
+      }
     }
 
     return new Error(defaultMessage);

@@ -16,6 +16,7 @@ const contractRoutes = require('./routes/contracts');
 const authRoutes = require('./routes/auth');
 const { logger, errorHandler } = require('./middleware');
 const { connectDatabase } = require('./utils/database');
+const { sanitizeQuery } = require('./middleware/inputValidation');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const GraphQLServer = require('./graphql/server');
@@ -28,8 +29,62 @@ const PORT = process.env.BACKEND_PORT || 3001;
 // Initialize GraphQL Server (creates the shared HTTP server internally)
 const graphqlServer = new GraphQLServer(app);
 
-// Security middleware
-app.use(helmet());
+// Security middleware with comprehensive CSP headers
+const cspDirectives = {
+  directives: {
+    defaultSrc: ["'self'"],
+    styleSrc: [
+      "'self'", 
+      "'unsafe-inline'", 
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com"
+    ],
+    scriptSrc: [
+      "'self'",
+      "'unsafe-eval'", // Required for React development mode
+      ...(process.env.NODE_ENV === 'development' ? ["'unsafe-inline'"] : [])
+    ],
+    imgSrc: [
+      "'self'", 
+      "data:", 
+      "https:", 
+      "blob:"
+    ],
+    fontSrc: [
+      "'self'",
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com",
+      "data:"
+    ],
+    connectSrc: [
+      "'self'",
+      ...(process.env.NODE_ENV === 'development' ? ["ws:", "wss:"] : ["wss:"]),
+      "https://*.stellar.org",
+      "https://horizon-testnet.stellar.org",
+      "https://horizon-mainnet.stellar.org"
+    ],
+    frameSrc: ["'none'"],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    frameAncestors: ["'none'"],
+    upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+  }
+};
+
+// Remove null directives for production
+if (process.env.NODE_ENV === 'production') {
+  Object.keys(cspDirectives.directives).forEach(key => {
+    if (cspDirectives.directives[key] === null) {
+      delete cspDirectives.directives[key];
+    }
+  });
+}
+
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? cspDirectives : false,
+  crossOriginEmbedderPolicy: false
+}));
 app.use(compression());
 
 // Rate limiting
@@ -50,6 +105,9 @@ app.use(
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Input sanitization middleware
+app.use(sanitizeQuery);
 
 // Logging
 app.use(

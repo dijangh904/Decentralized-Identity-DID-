@@ -7,7 +7,6 @@ import {
   Grid,
   Paper,
   LinearProgress,
-  Alert,
   Button,
   Chip,
   List,
@@ -29,11 +28,13 @@ import {
 } from '@mui/icons-material';
 import { stellarAPI } from '../services/api';
 import { useWallet } from '../contexts/WalletContext';
+import { handleApiError } from '../utils/errorHandler';
+import ErrorDisplay from '../components/ErrorDisplay';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const { wallet, isConnected } = useWallet();
 
   useEffect(() => {
@@ -58,11 +59,11 @@ const Dashboard = () => {
     };
   }, [isConnected]);
 
-  const fetchDashboardData = async (abortController, isMounted) => {
+  const fetchDashboardData = async (abortController, isMounted = true) => {
     if (!isMounted) return;
-    
+
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       // Fetch contract info and stats
@@ -82,7 +83,7 @@ const Dashboard = () => {
       });
     } catch (err) {
       if (!isMounted) return;
-      setError('Failed to load dashboard data');
+      setError(handleApiError(err));
     } finally {
       if (isMounted) setLoading(false);
     }
@@ -110,9 +111,7 @@ const Dashboard = () => {
   </Button>
 </Box>
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} role="alert">
-          {error}
-        </Alert>
+        <ErrorDisplay error={error} onClose={() => setError(null)} />
       )}
 
       {stats && (

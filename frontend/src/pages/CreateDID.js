@@ -103,12 +103,15 @@ const CreateDID = () => {
 
   const handleCreateAccount = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await stellarAPI.contracts.createAccount();
       toast.success('New account created! Check console for details.');
       console.log('New Account:', response.data);
     } catch (err) {
-      toast.error('Failed to create account');
+      const errorInfo = handleApiError(err);
+      setError(errorInfo);
+      toast.error(errorInfo.message);
     } finally {
       setLoading(false);
     }

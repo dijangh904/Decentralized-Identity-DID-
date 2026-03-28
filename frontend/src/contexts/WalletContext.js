@@ -59,7 +59,7 @@ export const WalletProvider = ({ children }) => {
 
     // Fallback to manual wallet creation
     try {
-      const response = await fetch('http://localhost:3001/api/v1/contracts/create-account', {
+      const response = await fetch('/api/v1/contracts/create-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ export const WalletProvider = ({ children }) => {
         
         // Auto-fund testnet account
         try {
-          await fetch('http://localhost:3001/api/v1/contracts/fund-account', {
+          await fetch('/api/v1/contracts/fund-account', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -154,7 +154,7 @@ export const WalletProvider = ({ children }) => {
     if (!wallet?.publicKey) return null;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/v1/contracts/account/${wallet.publicKey}`);
+      const response = await fetch(`/api/v1/contracts/account/${wallet.publicKey}`);
       const result = await response.json();
       
       if (result.success) {
@@ -183,7 +183,7 @@ export const WalletProvider = ({ children }) => {
           throw new Error('Private key not available. Please reconnect your wallet.');
         }
         
-        const response = await fetch('http://localhost:3001/api/v1/contracts/sign-transaction', {
+        const response = await fetch('/api/v1/contracts/sign-transaction', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

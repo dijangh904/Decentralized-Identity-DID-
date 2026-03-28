@@ -3,6 +3,8 @@
  * Provides various utilities to enhance user experience
  */
 
+import { sanitizeSuggestions, sanitizeHtml, sanitizeJsonForDisplay } from './inputSanitization';
+
 class UXOptimizer {
   constructor() {
     this.features = {
@@ -314,9 +316,10 @@ class SmartForms {
    */
   showAutoCompleteSuggestions(form, fieldName, value, dropdown) {
     const suggestions = this.getAutoCompleteSuggestions(fieldName, value);
+    const sanitizedSuggestions = sanitizeSuggestions(suggestions);
     
-    if (suggestions.length > 0) {
-      dropdown.innerHTML = suggestions
+    if (sanitizedSuggestions.length > 0) {
+      dropdown.innerHTML = sanitizedSuggestions
         .map(suggestion => `<div class="autocomplete-item">${suggestion}</div>`)
         .join('');
       dropdown.style.display = 'block';
@@ -595,7 +598,7 @@ class ProgressiveLoading {
     const html = await response.text();
     
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+    tempDiv.innerHTML = sanitizeHtml(html);
     
     return tempDiv.firstElementChild;
   }
@@ -641,8 +644,8 @@ class ProgressiveLoading {
    * Render data
    */
   renderData(element, data) {
-    // Simple data rendering - can be enhanced
-    element.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    // Use sanitized JSON rendering to prevent XSS
+    element.innerHTML = `<pre>${sanitizeJsonForDisplay(data)}</pre>`;
     element.classList.remove('loading');
     element.classList.add('loaded');
   }
@@ -656,7 +659,8 @@ class ProgressiveLoading {
     if (element.dataset.type === 'image') {
       element.style.opacity = '0.5';
     } else {
-      element.innerHTML = '<div class="loading-spinner">Loading...</div>';
+      // Use textContent to prevent XSS
+      element.textContent = 'Loading...';
     }
   }
 
@@ -671,7 +675,8 @@ class ProgressiveLoading {
       element.style.opacity = '1';
       element.alt = 'Failed to load';
     } else {
-      element.innerHTML = `<div class="error-message">Failed to load content</div>`;
+      // Use textContent to prevent XSS
+      element.textContent = 'Failed to load content';
     }
     
     console.error('Progressive loading error:', error);
