@@ -1,4 +1,22 @@
-const DIDContract = require('../../contracts/stellar/DIDContract');
+let DIDContract;
+try {
+  DIDContract = require('../../contracts/stellar/DIDContract');
+} catch (err) {
+  // If contract file is missing, use a dummy contract object for development
+  console.warn('⚠️  DIDContract file not found, using dummy contract object for development');
+  
+  // Create a dummy class that can be instantiated
+  DIDContract = class DummyContract {
+    constructor(horizonUrl) {
+      this.horizonUrl = horizonUrl;
+      this.contractAddress = null;
+      this.methods = {};
+      this.spec = {};
+      this.contractId = 'dummy-contract-id';
+    }
+  };
+}
+
 const StellarSDK = require('stellar-sdk');
 const logger = require('../utils/logger');
 

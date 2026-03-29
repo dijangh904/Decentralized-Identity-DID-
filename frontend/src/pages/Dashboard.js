@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -31,46 +31,47 @@ import { useWallet } from '../contexts/WalletContext';
 import { handleApiError } from '../utils/errorHandler';
 import ErrorDisplay from '../components/ErrorDisplay';
 
+// Mock data for fallback when API is unavailable
+const MOCK_STATS = {
+  totalDIDs: 742,
+  totalCredentials: 3521,
+  activeUsers: 187,
+  network: 'TESTNET',
+  contractAddress: 'CABC123DEF456GHI789JKL012MNO345PQR',
+  contractVersion: '1.0.0',
+  uptime: '99.9%',
+  avgResponseTime: '245ms',
+  lastRefreshed: new Date().toISOString(),
+  isUsingMockData: true
+};
+
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const isMountedRef = useRef(false);
+  const wsRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
   const { wallet, isConnected } = useWallet();
 
-  useEffect(() => {
-    let interval = null;
-    let isMounted = true;
-    const abortController = new AbortController();
+  const fetchDashboardData = useCallback(async ({ showLoading = false, signal } = {}) => {
+    if (!isMountedRef.current) return;
 
-    const initDashboard = async () => {
-      await fetchDashboardData(abortController, isMounted);
-      // Set up interval for periodic updates
-      interval = setInterval(() => {
-        fetchDashboardData(abortController, isMounted);
-      }, 30000);
-    };
+    if (showLoading) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
 
-    initDashboard();
-
-    return () => {
-      isMounted = false;
-      abortController.abort();
-      if (interval) clearInterval(interval);
-    };
-  }, [isConnected]);
-
-  const fetchDashboardData = async (abortController, isMounted = true) => {
-    if (!isMounted) return;
-
-    setLoading(true);
     setError(null);
+    console.log('Refreshing data...');
 
     try {
-      // Fetch contract info and stats
-      const contractInfo = await stellarAPI.contracts.getInfo();
-      
-      if (!isMounted) return; // Check if component is still mounted
-      
+      const contractInfo = await stellarAPI.contracts.getInfo({ signal });
+      if (!isMountedRef.current) return;
+
+      const timestamp = new Date().toLocaleTimeString();
       setStats({
         totalDIDs: Math.floor(Math.random() * 1000) + 100,
         totalCredentials: Math.floor(Math.random() * 5000) + 500,
@@ -79,15 +80,98 @@ const Dashboard = () => {
         contractAddress: contractInfo.data.address,
         contractVersion: contractInfo.data.version,
         uptime: '99.9%',
-        avgResponseTime: '245ms'
+        avgResponseTime: '245ms',
+        lastRefreshed: timestamp,
+        isUsingMockData: false
       });
+      console.log(`✓ Data refreshed successfully at ${timestamp}`);
     } catch (err) {
-      if (!isMounted) return;
+      if (!isMountedRef.current) return;
+      
+      // Fall back to mock data on API error
+      const timestamp = new Date().toLocaleTimeString();
+      console.warn(`✗ API call failed, switching to mock data (${err.message})`);
+      
+      setStats({
+        ...MOCK_STATS,
+        lastRefreshed: timestamp,
+        isUsingMockData: true
+      });
+      
+      // Show subtle error message but continue with mock data
       setError(handleApiError(err));
     } finally {
-      if (isMounted) setLoading(false);
+      if (!isMountedRef.current) return;
+      if (showLoading) setLoading(false);
+      else setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const abortController = new AbortController();
+
+    const setupWebSocket = () => {
+      if (typeof window === 'undefined') return;
+
+      const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = `${scheme}://${window.location.host}/ws`;
+
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        wsRef.current.send(JSON.stringify({ type: 'subscribe', topics: ['did:created', 'did:updated', 'credential:issued', 'credential:revoked', 'contract:deployed'] }));
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'event' && isMountedRef.current) {
+            fetchDashboardData({ showLoading: false, signal: abortController.signal });
+          }
+        } catch {
+          // Ignore malformed ws message
+        }
+      };
+
+      wsRef.current.onclose = () => {
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+        if (isMountedRef.current) {
+          reconnectTimerRef.current = setTimeout(setupWebSocket, 10000);
+        }
+      };
+
+      wsRef.current.onerror = () => {
+        // no-op: onclose will handle reconnect schedule
+      };
+    };
+
+    const initDashboard = async () => {
+      await fetchDashboardData({ showLoading: true, signal: abortController.signal });
+      const intervalId = setInterval(() => {
+        fetchDashboardData({ showLoading: false, signal: abortController.signal });
+      }, 30000);
+
+      setupWebSocket();
+
+      return intervalId;
+    };
+
+    let interval = null;
+    initDashboard().then((id) => {
+      interval = id;
+    });
+
+    return () => {
+      isMountedRef.current = false;
+      abortController.abort();
+      if (interval) clearInterval(interval);
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [isConnected, fetchDashboardData]);
 
   if (loading) {
     return (
@@ -105,11 +189,38 @@ const Dashboard = () => {
       <Typography variant="h4" gutterBottom fontWeight="bold">
         Stellar DID Platform Dashboard
       </Typography>
-      <Box display="flex" justifyContent="flex-end" mb={2}>
-  <Button variant="outlined" onClick={fetchDashboardData} startIcon={<TrendingUp />}>
-    Refresh
-  </Button>
-</Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="caption" color="text.secondary">
+            Last Refreshed: {stats?.lastRefreshed || 'Never'}
+          </Typography>
+          {stats?.isUsingMockData && (
+            <Chip
+              label="Mock Data"
+              size="small"
+              color="warning"
+              variant="outlined"
+              aria-label="Using mock data because backend is unavailable"
+            />
+          )}
+        </Box>
+        <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
+          <Button
+            variant="outlined"
+            onClick={() => fetchDashboardData({ showLoading: false })}
+            startIcon={<TrendingUp />}
+            disabled={loading || refreshing}
+            aria-label="Refresh dashboard data"
+          >
+            Refresh
+          </Button>
+          {refreshing && (
+            <Typography variant="caption" color="text.secondary" aria-live="polite">
+              Refreshing...
+            </Typography>
+          )}
+        </Box>
+      </Box>
       {error && (
         <ErrorDisplay error={error} onClose={() => setError(null)} />
       )}
