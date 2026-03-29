@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -12,80 +12,115 @@ import {
   Paper,
   Divider,
   IconButton,
-  Tooltip
-} from '@mui/material';
+  Tooltip,
+} from "@mui/material";
 import {
   AccountBalance,
   ContentCopy,
   Refresh,
   CheckCircle,
-  Error
-} from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { toast } from 'react-toastify';
-import { stellarAPI } from '../services/api';
-import { useWallet } from '../contexts/WalletContext';
-import { handleApiError } from '../utils/errorHandler';
-import ErrorDisplay from '../components/ErrorDisplay';
+} from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { toast } from "react-toastify";
+import { stellarAPI } from "../services/api";
+import { useWallet } from "../contexts/WalletContext";
+import { handleApiError } from "../utils/errorHandler";
+import ErrorDisplay from "../components/ErrorDisplay";
 
+// --- UPDATED VALIDATION SCHEMA (ISSUE #51) ---
 const schema = yup.object().shape({
-  serviceEndpoint: yup.string()
-    .url('Must be a valid URL (e.g., https://example.com)')
+  didIdentifier: yup
+    .string()
+    .required("DID Identifier is required")
+    .min(3, "Minimum 3 characters")
+    .max(32, "Maximum 32 characters")
+    .matches(
+      /^[a-z0-9-]+$/,
+      "Only lowercase letters, numbers, and hyphens allowed",
+    ),
+  serviceEndpoint: yup
+    .string()
+    .url("Must be a valid URL (e.g., https://example.com)")
     .nullable()
     .notRequired()
-    .transform((value) => (value === '' ? null : value)),
-  signerSecret: yup.string()
-    .required('Secret key is required for signing')
-    .matches(/^S[A-Z2-7]{55}$/, 'Invalid Stellar secret key format. Form: S...'),
+    .transform((value) => (value === "" ? null : value)),
+  signerSecret: yup
+    .string()
+    .required("Secret key is required for signing")
+    .matches(
+      /^S[A-Z2-7]{55}$/,
+      "Invalid Stellar secret key format. Form: S...",
+    ),
 });
 
 const CreateDID = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const { wallet, connectWallet, isConnected, loading: walletLoading } = useWallet();
+  const {
+    wallet,
+    connectWallet,
+    isConnected,
+    loading: walletLoading,
+  } = useWallet();
 
-  const { control, handleSubmit, reset, formState: { errors } } = useForm({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors, isValid },
+  } = useForm({
     resolver: yupResolver(schema),
+    mode: "onChange", // Provides real-time feedback as the user types
     defaultValues: {
-      serviceEndpoint: '',
-      signerSecret: wallet?.secretKey || '',
+      didIdentifier: "",
+      serviceEndpoint: "",
+      signerSecret: wallet?.secretKey || "",
     },
   });
+
+  // Watch identifier for the live preview
+  const currentIdentifier = watch("didIdentifier");
 
   // Update secret key when wallet changes
   React.useEffect(() => {
     if (wallet?.secretKey) {
-      reset({ ...control._defaultValues, signerSecret: wallet.secretKey });
+      reset((formValues) => ({
+        ...formValues,
+        signerSecret: wallet.secretKey,
+      }));
     }
-  }, [wallet, reset, control._defaultValues]);
+  }, [wallet, reset]);
 
   const handleCreateDID = async (data) => {
     setLoading(true);
-    setError('');
+    setError(null);
     setResult(null);
 
     try {
-      // Connect wallet if not connected
       if (!isConnected) {
         await connectWallet();
       }
 
       if (!wallet?.publicKey) {
-        throw new Error('Wallet not connected or public key missing');
+        throw new Error("Wallet not connected or public key missing");
       }
 
+      // Construct the full DID string using the validated identifier
+      const fullDID = `did:stellar:${wallet.publicKey}:${data.didIdentifier}`;
+
       const response = await stellarAPI.contracts.registerDID({
-        did: `did:stellar:${wallet.publicKey}`,
+        did: fullDID,
         publicKey: wallet.publicKey,
         serviceEndpoint: data.serviceEndpoint || undefined,
-        signerSecret: data.signerSecret
+        signerSecret: data.signerSecret,
       });
 
       setResult(response.data);
-      toast.success('DID created successfully!');
+      toast.success("DID created successfully!");
       reset();
     } catch (err) {
       const errorInfo = handleApiError(err);
@@ -98,7 +133,7 @@ const CreateDID = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard!');
+    toast.success("Copied to clipboard!");
   };
 
   const handleCreateAccount = async () => {
@@ -106,8 +141,8 @@ const CreateDID = () => {
     setError(null);
     try {
       const response = await stellarAPI.contracts.createAccount();
-      toast.success('New account created! Check console for details.');
-      console.log('New Account:', response.data);
+      toast.success("New account created! Check console for details.");
+      console.log("New Account:", response.data);
     } catch (err) {
       const errorInfo = handleApiError(err);
       setError(errorInfo);
@@ -117,15 +152,14 @@ const CreateDID = () => {
     }
   };
 
-
-
   return (
     <Box component="main" aria-label="Create DID page">
       <Typography variant="h4" gutterBottom fontWeight="bold">
         Create Decentralized Identity
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Create a new DID on the Stellar blockchain to manage your digital identity
+        Create a new DID on the Stellar blockchain to manage your digital
+        identity
       </Typography>
 
       <Grid container spacing={3} role="region" aria-label="Create DID form">
@@ -134,13 +168,22 @@ const CreateDID = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <AccountBalance sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
-                <Typography variant="h6" component="h2">Wallet Connection</Typography>
+                <AccountBalance
+                  sx={{ mr: 1, color: "primary.main" }}
+                  aria-hidden="true"
+                />
+                <Typography variant="h6" component="h2">
+                  Wallet Connection
+                </Typography>
               </Box>
-              
+
               {!isConnected ? (
                 <Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
                     Connect your wallet to create a DID
                   </Typography>
                   <Button
@@ -148,29 +191,60 @@ const CreateDID = () => {
                     onClick={connectWallet}
                     disabled={loading || walletLoading}
                     fullWidth
-                    aria-label={walletLoading ? 'Connecting wallet' : 'Connect wallet to create DID'}
-                    startIcon={walletLoading && <CircularProgress size={20} color="inherit" aria-hidden="true" />}
+                    aria-label={
+                      walletLoading
+                        ? "Connecting wallet"
+                        : "Connect wallet to create DID"
+                    }
+                    startIcon={
+                      walletLoading && (
+                        <CircularProgress
+                          size={20}
+                          color="inherit"
+                          aria-hidden="true"
+                        />
+                      )
+                    }
                   >
-                    {walletLoading ? 'Connecting...' : 'Connect Wallet'}
+                    {walletLoading ? "Connecting..." : "Connect Wallet"}
                   </Button>
                 </Box>
               ) : (
                 <Box>
-                  <Typography variant="body2" color="success.main" sx={{ mb: 1 }}>
-                    <CheckCircle sx={{ verticalAlign: 'middle', mr: 1, fontSize: 16 }} aria-hidden="true" />
+                  <Typography
+                    variant="body2"
+                    color="success.main"
+                    sx={{ mb: 1 }}
+                  >
+                    <CheckCircle
+                      sx={{ verticalAlign: "middle", mr: 1, fontSize: 16 }}
+                      aria-hidden="true"
+                    />
                     Wallet Connected
                   </Typography>
-                  <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                    <Typography variant="body2" color="text.secondary" id="public-key-label">
+                  <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      id="public-key-label"
+                    >
                       Public Key
                     </Typography>
                     <Box display="flex" alignItems="center">
-                      <Typography variant="body1" sx={{ fontFamily: 'monospace', mr: 1 }} aria-labelledby="public-key-label">
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontFamily: "monospace",
+                          mr: 1,
+                          wordBreak: "break-all",
+                        }}
+                        aria-labelledby="public-key-label"
+                      >
                         {wallet.publicKey}
                       </Typography>
                       <Tooltip title="Copy">
-                        <IconButton 
-                          size="small" 
+                        <IconButton
+                          size="small"
                           onClick={() => copyToClipboard(wallet.publicKey)}
                           aria-label="Copy public key to clipboard"
                         >
@@ -192,11 +266,57 @@ const CreateDID = () => {
               <Typography variant="h6" gutterBottom component="h2">
                 DID Configuration
               </Typography>
-              
-              <form onSubmit={handleSubmit(handleCreateDID)} aria-label="Create DID form">
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom id="did-preview-label">
-                    Your DID will be: <strong>did:stellar:{wallet?.publicKey || 'G...'}</strong>
+
+              <form
+                onSubmit={handleSubmit(handleCreateDID)}
+                aria-label="Create DID form"
+              >
+                <Controller
+                  name="didIdentifier"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Unique Identifier"
+                      placeholder="e.g., my-identity-01"
+                      fullWidth
+                      margin="normal"
+                      error={!!errors.didIdentifier}
+                      helperText={
+                        errors.didIdentifier?.message ||
+                        "Alphanumeric and hyphens only"
+                      }
+                    />
+                  )}
+                />
+
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 1.5,
+                    bgcolor: "action.hover",
+                    borderRadius: 1,
+                    border: "1px dashed",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
+                    DID PREVIEW:
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    did:stellar:{wallet?.publicKey || "G..."}
+                    {currentIdentifier ? `:${currentIdentifier}` : ""}
                   </Typography>
                 </Box>
 
@@ -212,7 +332,6 @@ const CreateDID = () => {
                       margin="normal"
                       error={!!errors.serviceEndpoint}
                       helperText={errors.serviceEndpoint?.message}
-                      aria-describedby={errors.serviceEndpoint ? 'service-endpoint-error' : undefined}
                     />
                   )}
                 />
@@ -229,7 +348,10 @@ const CreateDID = () => {
                       fullWidth
                       margin="normal"
                       error={!!errors.signerSecret}
-                      helperText={errors.signerSecret?.message || 'Stellar secret key (starts with S)'}
+                      helperText={
+                        errors.signerSecret?.message ||
+                        "Stellar secret key (starts with S)"
+                      }
                     />
                   )}
                 />
@@ -238,12 +360,17 @@ const CreateDID = () => {
                   type="submit"
                   variant="contained"
                   size="large"
-                  disabled={loading || walletLoading || !isConnected}
+                  disabled={
+                    loading || walletLoading || !isConnected || !isValid
+                  }
                   fullWidth
                   sx={{ mt: 2 }}
-                  aria-label={loading ? 'Creating DID' : 'Create decentralized identity'}
                 >
-                  {loading ? <CircularProgress size={24} aria-hidden="true" /> : 'Create DID'}
+                  {loading ? (
+                    <CircularProgress size={24} aria-hidden="true" />
+                  ) : (
+                    "Create DID"
+                  )}
                 </Button>
               </form>
 
@@ -252,12 +379,17 @@ const CreateDID = () => {
               <Button
                 variant="outlined"
                 onClick={handleCreateAccount}
-                startIcon={loading ? <CircularProgress size={20} aria-hidden="true" /> : <Refresh />}
+                startIcon={
+                  loading ? (
+                    <CircularProgress size={20} aria-hidden="true" />
+                  ) : (
+                    <Refresh />
+                  )
+                }
                 disabled={loading || walletLoading}
                 fullWidth
-                aria-label={loading ? 'Creating new account' : 'Create new Stellar account'}
               >
-                {loading ? 'Processing...' : 'Create New Account'}
+                {loading ? "Processing..." : "Create New Account"}
               </Button>
             </CardContent>
           </Card>
@@ -266,47 +398,69 @@ const CreateDID = () => {
         {/* Results */}
         {result && (
           <Grid item xs={12}>
-            <Card>
+            <Card sx={{ border: "1px solid", borderColor: "success.main" }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom color="success.main" component="h2">
-                  <CheckCircle sx={{ verticalAlign: 'middle', mr: 1 }} aria-hidden="true" />
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  color="success.main"
+                  component="h2"
+                >
+                  <CheckCircle
+                    sx={{ verticalAlign: "middle", mr: 1 }}
+                    aria-hidden="true"
+                  />
                   DID Created Successfully!
                 </Typography>
-                
-                <Grid container spacing={2} role="region" aria-label="DID creation results">
+
+                <Grid container spacing={2}>
                   <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" id="result-did-label">
+                    <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                      <Typography variant="subtitle2" color="text.secondary">
                         DID
                       </Typography>
                       <Box display="flex" alignItems="center">
-                        <Typography variant="body1" sx={{ fontFamily: 'monospace', mr: 1 }} aria-labelledby="result-did-label">
-                          {result.data.did || `did:stellar:${wallet.publicKey}`}
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontFamily: "monospace",
+                            mr: 1,
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {result.data.did}
                         </Typography>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => copyToClipboard(result.data.did || `did:stellar:${wallet.publicKey}`)}
-                          aria-label="Copy DID to clipboard"
+                        <IconButton
+                          size="small"
+                          onClick={() => copyToClipboard(result.data.did)}
                         >
                           <ContentCopy fontSize="small" />
                         </IconButton>
                       </Box>
                     </Paper>
                   </Grid>
-                  
+
                   <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" id="result-tx-label">
+                    <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+                      <Typography variant="subtitle2" color="text.secondary">
                         Transaction Hash
                       </Typography>
                       <Box display="flex" alignItems="center">
-                        <Typography variant="body1" sx={{ fontFamily: 'monospace', mr: 1 }} aria-labelledby="result-tx-label">
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontFamily: "monospace",
+                            mr: 1,
+                            wordBreak: "break-all",
+                          }}
+                        >
                           {result.data.transactionHash}
                         </Typography>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => copyToClipboard(result.data.transactionHash)}
-                          aria-label="Copy transaction hash to clipboard"
+                        <IconButton
+                          size="small"
+                          onClick={() =>
+                            copyToClipboard(result.data.transactionHash)
+                          }
                         >
                           <ContentCopy fontSize="small" />
                         </IconButton>
@@ -314,19 +468,6 @@ const CreateDID = () => {
                     </Paper>
                   </Grid>
                 </Grid>
-
-                {result.data.account && (
-                  <Box sx={{ mt: 2 }} role="region" aria-label="Account details">
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Account Details
-                    </Typography>
-                    <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="body2" component="pre">
-                        {JSON.stringify(result.data.account, null, 2)}
-                      </Typography>
-                    </Paper>
-                  </Box>
-                )}
               </CardContent>
             </Card>
           </Grid>
@@ -335,10 +476,7 @@ const CreateDID = () => {
         {/* Error Display */}
         {error && (
           <Grid item xs={12}>
-            <ErrorDisplay 
-              error={error} 
-              onClose={() => setError(null)} 
-            />
+            <ErrorDisplay error={error} onClose={() => setError(null)} />
           </Grid>
         )}
       </Grid>
