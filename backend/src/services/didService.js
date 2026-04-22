@@ -13,28 +13,35 @@ class DIDService {
   }
 
   async getDID(did) {
+    const startTime = Date.now();
     try {
+      logger.logInfo('Fetching DID', { did, operation: 'getDID' });
+
       // Try cache first
       const cacheKey = `${this.cachePrefix}${did}`;
       const cached = await redis.get(cacheKey);
-      
+
       if (cached) {
+        logger.logDebug('DID found in cache', { did, cacheKey });
         return JSON.parse(cached);
       }
 
       // Fetch from database/blockchain
       const didDocument = await this.fetchDIDFromSource(did);
-      
+
       if (didDocument) {
         // Cache for 5 minutes
         await redis.setex(cacheKey, 300, JSON.stringify(didDocument));
+        logger.logBusiness('did_retrieved', { did, cached: false });
         return didDocument;
       }
 
       throw new Error('DID not found');
     } catch (error) {
-      logger.error('Error fetching DID:', error);
+      logger.logError('Failed to fetch DID', error, { did, operation: 'getDID' });
       throw error;
+    } finally {
+      logger.logPerformance('getDID', Date.now() - startTime, { did });
     }
   }
 
@@ -245,10 +252,10 @@ class DIDService {
     return {
       async *[Symbol.asyncIterator]() {
         // Implement Redis pub/sub or WebSocket subscription
-        const channel = owner 
+        const channel = owner
           ? `${DIDService.prototype.subscriptionChannels.DID_CREATED}:${owner}`
           : DIDService.prototype.subscriptionChannels.DID_CREATED;
-        
+
         // This is a simplified implementation
         // In production, you'd use proper Redis pub/sub or WebSocket
         logger.info(`Subscribed to DID created events for owner: ${owner || 'all'}`);

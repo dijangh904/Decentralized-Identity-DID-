@@ -22,8 +22,10 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
+    "@sentry/node": "^7.77.0",
     "apollo-server-express": "^3.12.0",
     "bcryptjs": "^2.4.3",
+    "cls-hooked": "^4.3.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
@@ -42,6 +44,7 @@
     "stellar-sdk": "^10.1.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "uuid": "^9.0.0",
     "winston": "^3.10.0",
     "ws": "^8.20.0"
   },

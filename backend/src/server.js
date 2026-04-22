@@ -15,6 +15,13 @@ const credentialRoutes = require('./routes/credentials');
 const contractRoutes = require('./routes/contracts');
 const authRoutes = require('./routes/auth');
 const { logger, errorHandler } = require('./middleware');
+const {
+  correlationMiddleware,
+  performanceMiddleware,
+  securityMiddleware,
+  businessContextMiddleware,
+  structuredErrorHandler
+} = require('./middleware/correlationMiddleware');
 const { connectDatabase } = require('./utils/database');
 const { sanitizeQuery } = require('./middleware/inputValidation');
 const swaggerUi = require('swagger-ui-express');
@@ -34,8 +41,8 @@ const cspDirectives = {
   directives: {
     defaultSrc: ["'self'"],
     styleSrc: [
-      "'self'", 
-      "'unsafe-inline'", 
+      "'self'",
+      "'unsafe-inline'",
       "https://fonts.googleapis.com",
       "https://fonts.gstatic.com"
     ],
@@ -45,9 +52,9 @@ const cspDirectives = {
       ...(process.env.NODE_ENV === 'development' ? ["'unsafe-inline'"] : [])
     ],
     imgSrc: [
-      "'self'", 
-      "data:", 
-      "https:", 
+      "'self'",
+      "data:",
+      "https:",
       "blob:"
     ],
     fontSrc: [
@@ -102,6 +109,12 @@ app.use(
   }),
 );
 
+// Structured logging and correlation middleware (must be first)
+app.use(correlationMiddleware);
+app.use(performanceMiddleware);
+app.use(securityMiddleware);
+app.use(businessContextMiddleware);
+
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -109,10 +122,10 @@ app.use(express.urlencoded({ extended: true }));
 // Input sanitization middleware
 app.use(sanitizeQuery);
 
-// Logging
+// Enhanced logging with correlation context
 app.use(
   morgan("combined", {
-    stream: { write: (message) => logger.info(message.trim()) },
+    stream: { write: (message) => logger.logInfo('HTTP Request', { morgan: message.trim() }) },
   }),
 );
 
@@ -168,6 +181,9 @@ app.use("*", (req, res) => {
   });
 });
 
+// Structured error handling middleware
+app.use(structuredErrorHandler);
+
 // Error handling middleware
 app.use(errorHandler);
 
@@ -210,15 +226,21 @@ async function startServer() {
     // Start listening
     await graphqlServer.startServer(PORT);
 
-    logger.info(`🚀 Stellar DID Backend running on port ${PORT}`);
-    logger.info(`📡 Network: ${process.env.STELLAR_NETWORK || 'TESTNET'}`);
-    logger.info(`🌐 REST API: http://localhost:${PORT}/api`);
-    logger.info(`📊 GraphQL API: http://localhost:${PORT}/graphql`);
-    logger.info(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
-    logger.info(`📚 Health: http://localhost:${PORT}/health`);
-    logger.info(`📖 Documentation: http://localhost:${PORT}/api/docs`);
+    logger.logInfo('🚀 Stellar DID Backend started', {
+      port: PORT,
+      network: process.env.STELLAR_NETWORK || 'TESTNET',
+      environment: process.env.NODE_ENV || 'development',
+      version: process.env.APP_VERSION || '1.0.0',
+      endpoints: {
+        rest: `http://localhost:${PORT}/api`,
+        graphql: `http://localhost:${PORT}/graphql`,
+        websocket: `ws://localhost:${PORT}/ws`,
+        health: `http://localhost:${PORT}/health`,
+        docs: `http://localhost:${PORT}/api/docs`
+      }
+    });
   } catch (error) {
-    logger.error("Failed to start server:", error);
+    logger.logError("Failed to start server", error);
     process.exit(1);
   }
 }
