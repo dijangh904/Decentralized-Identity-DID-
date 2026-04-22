@@ -1,6 +1,6 @@
 const { logger } = require('../middleware');
-const redis = require('../utils/redis');
 const crypto = require('crypto');
+const enhancedCache = require('./enhancedCacheService');
 
 class CredentialService {
   constructor() {
@@ -13,24 +13,20 @@ class CredentialService {
 
   async getCredential(id) {
     try {
-      // Try cache first
-      const cacheKey = `${this.cachePrefix}${id}`;
-      const cached = await redis.get(cacheKey);
-      
-      if (cached) {
-        return JSON.parse(cached);
-      }
+      // Use enhanced cache with intelligent TTL
+      return await enhancedCache.wrap('credential', id, async () => {
+        // Fetch from database/blockchain
+        const credential = await this.fetchCredentialFromSource(id);
 
-      // Fetch from database/blockchain
-      const credential = await this.fetchCredentialFromSource(id);
-      
-      if (credential) {
-        // Cache for 5 minutes
-        await redis.setex(cacheKey, 300, JSON.stringify(credential));
+        if (!credential) {
+          throw new Error('Credential not found');
+        }
+
         return credential;
-      }
-
-      throw new Error('Credential not found');
+      }, {
+        dataType: 'credential',
+        status: 'default' // Will be inferred from data
+      });
     } catch (error) {
       logger.error('Error fetching credential:', error);
       throw error;
@@ -48,7 +44,7 @@ class CredentialService {
       if (subject) query.subject = subject;
       if (credentialType) query.credentialType = credentialType;
       if (revoked !== undefined) query.revoked = revoked;
-      
+
       if (expired !== undefined) {
         if (expired) {
           query.expires = { $lt: new Date() };
@@ -78,7 +74,7 @@ class CredentialService {
       if (subject) query.subject = subject;
       if (credentialType) query.credentialType = credentialType;
       if (revoked !== undefined) query.revoked = revoked;
-      
+
       if (expired !== undefined) {
         if (expired) {
           query.expires = { $lt: new Date() };
@@ -141,9 +137,9 @@ class CredentialService {
       // Save to database/blockchain
       const created = await this.saveCredentialToSource(credential);
 
-      // Cache the new credential
-      const cacheKey = `${this.cachePrefix}${id}`;
-      await redis.setex(cacheKey, 300, JSON.stringify(created));
+      // Cache the new credential with intelligent TTL
+      const status = created.revoked ? 'revoked' : (created.expires && new Date(created.expires) < new Date()) ? 'expired' : 'active';
+      await enhancedCache.set('credential', id, created, enhancedCache.getTTLForType('credential', status));
 
       // Publish to subscription channel
       await this.publishCredentialEvent(this.subscriptionChannels.CREDENTIAL_ISSUED, created);
@@ -176,9 +172,13 @@ class CredentialService {
       // Save to database/blockchain
       await this.saveCredentialToSource(revoked);
 
-      // Update cache
-      const cacheKey = `${this.cachePrefix}${id}`;
-      await redis.setex(cacheKey, 300, JSON.stringify(revoked));
+      // Invalidate related cache entries
+      await enhancedCache.invalidateRelated([
+        { namespace: 'credential', id: id, relationType: 'credential' }
+      ]);
+
+      // Cache revoked credential with short TTL
+      await enhancedCache.set('credential', id, revoked, enhancedCache.getTTLForType('credential', 'revoked'));
 
       // Publish to subscription channel
       await this.publishCredentialEvent(this.subscriptionChannels.CREDENTIAL_REVOKED, revoked);
@@ -273,9 +273,9 @@ class CredentialService {
         const channel = issuer && subject
           ? `${this.subscriptionChannels.CREDENTIAL_ISSUED}:${issuer}:${subject}`
           : issuer
-          ? `${this.subscriptionChannels.CREDENTIAL_ISSUED}:${issuer}`
-          : this.subscriptionChannels.CREDENTIAL_ISSUED;
-        
+            ? `${this.subscriptionChannels.CREDENTIAL_ISSUED}:${issuer}`
+            : this.subscriptionChannels.CREDENTIAL_ISSUED;
+
         logger.info(`Subscribed to credential issued events for issuer: ${issuer || 'all'}, subject: ${subject || 'all'}`);
       }
     };
@@ -287,9 +287,9 @@ class CredentialService {
         const channel = issuer && subject
           ? `${this.subscriptionChannels.CREDENTIAL_REVOKED}:${issuer}:${subject}`
           : issuer
-          ? `${this.subscriptionChannels.CREDENTIAL_REVOKED}:${issuer}`
-          : this.subscriptionChannels.CREDENTIAL_REVOKED;
-        
+            ? `${this.subscriptionChannels.CREDENTIAL_REVOKED}:${issuer}`
+            : this.subscriptionChannels.CREDENTIAL_REVOKED;
+
         logger.info(`Subscribed to credential revoked events for issuer: ${issuer || 'all'}, subject: ${subject || 'all'}`);
       }
     };
@@ -302,7 +302,7 @@ class CredentialService {
     const hash = crypto.createHash('sha256')
       .update(`${issuer}:${subject}:${credentialType}:${timestamp}:${randomBytes}`)
       .digest('hex');
-    
+
     return `urn:uuid:${hash.substring(0, 8)}-${hash.substring(8, 12)}-${hash.substring(12, 16)}-${hash.substring(16, 20)}-${hash.substring(20, 32)}`;
   }
 

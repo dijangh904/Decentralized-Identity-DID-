@@ -10,7 +10,86 @@ class CacheManager {
       misses: 0,
       sets: 0,
       deletes: 0,
-      errors: 0
+      errors: 0,
+      invalidations: 0
+    };
+
+    // TTL strategies for different data types
+    this.ttlStrategies = {
+      // DID documents - longer TTL as they change infrequently
+      'did': {
+        default: 3600, // 1 hour
+        active: 1800,  // 30 minutes for active DIDs
+        inactive: 7200 // 2 hours for inactive DIDs
+      },
+
+      // Credentials - medium TTL with expiration awareness
+      'credential': {
+        default: 900,  // 15 minutes
+        active: 600,   // 10 minutes for active credentials
+        expired: 300,  // 5 minutes for expired credentials
+        revoked: 60    // 1 minute for revoked credentials
+      },
+
+      // Verification methods - shorter TTL as they can change
+      'verification': {
+        default: 600, // 10 minutes
+        active: 300,  // 5 minutes
+        inactive: 900  // 15 minutes
+      },
+
+      // Services - medium TTL
+      'service': {
+        default: 1200, // 20 minutes
+        active: 600,   // 10 minutes
+        inactive: 1800  // 30 minutes
+      },
+
+      // Search results - short TTL to ensure freshness
+      'search': {
+        default: 300,  // 5 minutes
+        popular: 600,  // 10 minutes for popular searches
+        recent: 180   // 3 minutes for recent searches
+      },
+
+      // User sessions - short TTL for security
+      'session': {
+        default: 900,  // 15 minutes
+        active: 600,   // 10 minutes for active sessions
+        admin: 300    // 5 minutes for admin sessions
+      },
+
+      // Rate limiting - very short TTL
+      'rate_limit': {
+        default: 60,   // 1 minute
+        strict: 30,   // 30 seconds for strict limits
+        relaxed: 120  // 2 minutes for relaxed limits
+      },
+
+      // API responses - medium TTL
+      'api': {
+        default: 300,  // 5 minutes
+        public: 600,   // 10 minutes for public data
+        private: 180   // 3 minutes for private data
+      }
+    };
+
+    // Cache invalidation patterns
+    this.invalidationPatterns = {
+      'did': [
+        'did:*',           // All DID-related keys
+        'verification:*',    // All verification methods
+        'service:*'         // All services
+      ],
+      'credential': [
+        'credential:*',      // All credentials
+        'verification:*'     // Credential verifications
+      ],
+      'user': [
+        'session:*',         // User sessions
+        'profile:*',         // User profiles
+        'preferences:*'      // User preferences
+      ]
     };
   }
 
@@ -28,7 +107,7 @@ class CacheManager {
     try {
       const key = this.generateKey(namespace, identifier);
       const value = await redis.get(key);
-      
+
       if (value) {
         this.stats.hits++;
         logger.debug(`Cache hit: ${key}`);
@@ -52,13 +131,13 @@ class CacheManager {
     try {
       const key = this.generateKey(namespace, identifier);
       const serializedValue = JSON.stringify(value);
-      
+
       if (ttl > 0) {
         await redis.setex(key, ttl, serializedValue);
       } else {
         await redis.set(key, serializedValue);
       }
-      
+
       this.stats.sets++;
       logger.debug(`Cache set: ${key} (TTL: ${ttl}s)`);
       return true;
@@ -76,12 +155,12 @@ class CacheManager {
     try {
       const key = this.generateKey(namespace, identifier);
       const result = await redis.del(key);
-      
+
       if (result > 0) {
         this.stats.deletes++;
         logger.debug(`Cache delete: ${key}`);
       }
-      
+
       return result > 0;
     } catch (error) {
       this.stats.errors++;
@@ -97,12 +176,12 @@ class CacheManager {
     try {
       const pattern = `${this.keyPrefix}${namespace}:*`;
       const keys = await redis.keys(pattern);
-      
+
       if (keys.length > 0) {
         await redis.del(...keys);
         logger.debug(`Cache cleared namespace: ${namespace} (${keys.length} keys)`);
       }
-      
+
       return keys.length;
     } catch (error) {
       this.stats.errors++;
@@ -118,7 +197,7 @@ class CacheManager {
     try {
       const keys = identifiers.map(id => this.generateKey(namespace, id));
       const values = await redis.mget(...keys);
-      
+
       return values.map(value => {
         if (value) {
           this.stats.hits++;
@@ -141,21 +220,21 @@ class CacheManager {
   async mset(namespace, items, ttl = this.defaultTTL) {
     try {
       const pipeline = redis.pipeline();
-      
+
       items.forEach(({ identifier, value }) => {
         const key = this.generateKey(namespace, identifier);
         const serializedValue = JSON.stringify(value);
-        
+
         if (ttl > 0) {
           pipeline.setex(key, ttl, serializedValue);
         } else {
           pipeline.set(key, serializedValue);
         }
       });
-      
+
       await pipeline.exec();
       this.stats.sets += items.length;
-      
+
       logger.debug(`Cache mset: ${namespace} (${items.length} items)`);
       return true;
     } catch (error) {
@@ -172,7 +251,7 @@ class CacheManager {
     try {
       const key = this.generateKey(namespace, identifier);
       const result = await redis.incrby(key, amount);
-      
+
       logger.debug(`Cache increment: ${key} by ${amount}`);
       return result;
     } catch (error) {
@@ -189,7 +268,7 @@ class CacheManager {
     try {
       const key = this.generateKey(namespace, identifier);
       const result = await redis.exists(key);
-      
+
       return result === 1;
     } catch (error) {
       this.stats.errors++;
@@ -205,11 +284,11 @@ class CacheManager {
     try {
       const key = this.generateKey(namespace, identifier);
       const result = await redis.expire(key, ttl);
-      
+
       if (result) {
         logger.debug(`Cache expire: ${key} (TTL: ${ttl}s)`);
       }
-      
+
       return result === 1;
     } catch (error) {
       this.stats.errors++;
@@ -245,7 +324,7 @@ class CacheManager {
 
       // Fetch fresh data
       const data = await fetchFunction();
-      
+
       // Cache the result
       if (data !== null && data !== undefined) {
         await this.set(namespace, identifier, data, ttl);
@@ -264,15 +343,15 @@ class CacheManager {
   async invalidateRelated(identifiers) {
     try {
       const pipeline = redis.pipeline();
-      
+
       identifiers.forEach(({ namespace, id }) => {
         const key = this.generateKey(namespace, id);
         pipeline.del(key);
       });
-      
+
       const results = await pipeline.exec();
       const deletedCount = results.filter(([err, result]) => !err && result > 0).length;
-      
+
       logger.debug(`Cache invalidation: ${deletedCount} entries deleted`);
       return deletedCount;
     } catch (error) {
@@ -286,8 +365,8 @@ class CacheManager {
    * Get cache statistics
    */
   getStats() {
-    const hitRate = this.stats.hits + this.stats.misses > 0 
-      ? (this.stats.hits / (this.stats.hits + this.stats.misses)) * 100 
+    const hitRate = this.stats.hits + this.stats.misses > 0
+      ? (this.stats.hits / (this.stats.hits + this.stats.misses)) * 100
       : 0;
 
     return {
@@ -318,7 +397,7 @@ class CacheManager {
       await redis.set(testKey, 'ok', 'EX', 10);
       const value = await redis.get(testKey);
       await redis.del(testKey);
-      
+
       return {
         status: value === 'ok' ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString(),

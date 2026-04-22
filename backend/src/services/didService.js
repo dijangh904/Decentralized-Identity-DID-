@@ -1,6 +1,6 @@
 const { logger } = require('../middleware');
-const redis = require('../utils/redis');
 const { formatErrorResponse } = require('../utils/errorMessages');
+const enhancedCache = require('./enhancedCacheService');
 
 class DIDService {
   constructor() {
@@ -14,24 +14,20 @@ class DIDService {
 
   async getDID(did) {
     try {
-      // Try cache first
-      const cacheKey = `${this.cachePrefix}${did}`;
-      const cached = await redis.get(cacheKey);
-      
-      if (cached) {
-        return JSON.parse(cached);
-      }
+      // Use enhanced cache with intelligent TTL
+      return await enhancedCache.wrap('did', did, async () => {
+        // Fetch from database/blockchain
+        const didDocument = await this.fetchDIDFromSource(did);
 
-      // Fetch from database/blockchain
-      const didDocument = await this.fetchDIDFromSource(did);
-      
-      if (didDocument) {
-        // Cache for 5 minutes
-        await redis.setex(cacheKey, 300, JSON.stringify(didDocument));
+        if (!didDocument) {
+          throw new Error('DID not found');
+        }
+
         return didDocument;
-      }
-
-      throw new Error('DID not found');
+      }, {
+        dataType: 'did',
+        status: 'default' // Will be inferred from data
+      });
     } catch (error) {
       logger.error('Error fetching DID:', error);
       throw error;
@@ -124,9 +120,16 @@ class DIDService {
         await this.saveServices(did, services);
       }
 
-      // Cache the new DID
-      const cacheKey = `${this.cachePrefix}${did}`;
-      await redis.setex(cacheKey, 300, JSON.stringify(created));
+      // Cache the new DID with intelligent TTL
+      await enhancedCache.set('did', did, created, enhancedCache.getTTLForType('did', 'active'));
+
+      // Cache verification methods and services
+      if (verificationMethods) {
+        await enhancedCache.set('verification', did, verificationMethods, enhancedCache.getTTLForType('verification', 'active'));
+      }
+      if (services) {
+        await enhancedCache.set('service', did, services, enhancedCache.getTTLForType('service', 'active'));
+      }
 
       // Publish to subscription channel
       await this.publishDIDEvent(this.subscriptionChannels.DID_CREATED, created);
@@ -150,6 +153,11 @@ class DIDService {
         throw new Error('Cannot update inactive DID');
       }
 
+      // Invalidate existing cache entries
+      await enhancedCache.invalidateRelated([
+        { namespace: 'did', id: did, relationType: 'did' }
+      ]);
+
       // Update fields
       const updated = {
         ...existing,
@@ -163,15 +171,17 @@ class DIDService {
       // Update verification methods and services if provided
       if (updateData.verificationMethods) {
         await this.saveVerificationMethods(did, updateData.verificationMethods);
+        await enhancedCache.set('verification', did, updateData.verificationMethods, enhancedCache.getTTLForType('verification', 'active'));
       }
 
       if (updateData.services) {
         await this.saveServices(did, updateData.services);
+        await enhancedCache.set('service', did, updateData.services, enhancedCache.getTTLForType('service', 'active'));
       }
 
-      // Update cache
-      const cacheKey = `${this.cachePrefix}${did}`;
-      await redis.setex(cacheKey, 300, JSON.stringify(updated));
+      // Cache updated DID with intelligent TTL
+      const status = updated.active ? 'active' : 'inactive';
+      await enhancedCache.set('did', did, updated, enhancedCache.getTTLForType('did', status));
 
       // Publish to subscription channel
       await this.publishDIDEvent(this.subscriptionChannels.DID_UPDATED, updated);
@@ -200,9 +210,13 @@ class DIDService {
       // Save to database/blockchain
       await this.saveDIDToSource(deactivated);
 
-      // Update cache
-      const cacheKey = `${this.cachePrefix}${did}`;
-      await redis.setex(cacheKey, 300, JSON.stringify(deactivated));
+      // Invalidate all DID-related cache entries
+      await enhancedCache.invalidateRelated([
+        { namespace: 'did', id: did, relationType: 'did' }
+      ]);
+
+      // Cache deactivated DID with longer TTL
+      await enhancedCache.set('did', did, deactivated, enhancedCache.getTTLForType('did', 'inactive'));
 
       // Publish to subscription channel
       await this.publishDIDEvent(this.subscriptionChannels.DID_DEACTIVATED, deactivated);
@@ -245,10 +259,10 @@ class DIDService {
     return {
       async *[Symbol.asyncIterator]() {
         // Implement Redis pub/sub or WebSocket subscription
-        const channel = owner 
+        const channel = owner
           ? `${DIDService.prototype.subscriptionChannels.DID_CREATED}:${owner}`
           : DIDService.prototype.subscriptionChannels.DID_CREATED;
-        
+
         // This is a simplified implementation
         // In production, you'd use proper Redis pub/sub or WebSocket
         logger.info(`Subscribed to DID created events for owner: ${owner || 'all'}`);
