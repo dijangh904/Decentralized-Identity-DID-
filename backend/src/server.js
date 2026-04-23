@@ -15,6 +15,7 @@ const credentialRoutes = require('./routes/credentials');
 const contractRoutes = require('./routes/contracts');
 const authRoutes = require('./routes/auth');
 const monitoringRoutes = require('./routes/monitoring');
+const bridgeRoutes = require('./routes/bridge');
 const { logger, errorHandler } = require('./middleware');
 const { connectDatabase } = require('./utils/database');
 const { sanitizeQuery } = require('./middleware/inputValidation');
@@ -135,6 +136,7 @@ app.use("/api/v1/credentials", credentialRoutes);
 app.use("/api/v1/contracts", contractRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/monitoring", monitoringRoutes);
+app.use("/api/v1/bridge", bridgeRoutes);
 
 // Swagger Documentation
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
