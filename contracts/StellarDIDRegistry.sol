@@ -34,14 +34,41 @@ contract StellarDIDRegistry {
     mapping(bytes32 => VerifiableCredential) public credentials;
     mapping(address => string[]) public ownerToDids;
     
+    // Emergency state variables
+    address public emergencyAdmin;
+    bool public paused;
+    bool public emergencyMode;
+    uint256 public emergencyPauseTimestamp;
+    
     event DIDCreated(string indexed did, address indexed owner, string publicKey);
     event DIDUpdated(string indexed did, uint256 updated);
     event DIDDeactivated(string indexed did);
     event CredentialIssued(bytes32 indexed id, string issuer, string subject);
     event CredentialRevoked(bytes32 indexed id);
     
+    // Emergency events
+    event EmergencyPaused(address indexed admin, uint256 timestamp);
+    event EmergencyDrained(address indexed admin, uint256 amount);
+    event EmergencyRecovered(address indexed admin, uint256 timestamp);
+    event EmergencyAdminChanged(address indexed oldAdmin, address indexed newAdmin);
+    
     modifier onlyOwner(string memory did) {
         require(didDocuments[did].owner == msg.sender, "Only DID owner can perform this action");
+        _;
+    }
+    
+    modifier onlyEmergencyAdmin() {
+        require(msg.sender == emergencyAdmin, "Only emergency admin can perform this action");
+        _;
+    }
+    
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused due to emergency");
+        _;
+    }
+    
+    modifier whenEmergencyMode() {
+        require(emergencyMode, "Contract is not in emergency mode");
         _;
     }
     
@@ -52,7 +79,7 @@ contract StellarDIDRegistry {
         string memory did,
         string memory publicKey,
         string memory serviceEndpoint
-    ) external returns (bool) {
+    ) external whenNotPaused returns (bool) {
         require(bytes(didDocuments[did].did).length == 0, "DID already exists");
         
         didDocuments[did] = DIDDocument({
@@ -78,7 +105,7 @@ contract StellarDIDRegistry {
         string memory did,
         string memory newPublicKey,
         string memory newServiceEndpoint
-    ) external onlyOwner(did) returns (bool) {
+    ) external onlyOwner(did) whenNotPaused returns (bool) {
         require(didDocuments[did].active, "DID is not active");
         
         if (bytes(newPublicKey).length > 0) {
@@ -98,7 +125,7 @@ contract StellarDIDRegistry {
     /**
      * @dev Deactivate DID
      */
-    function deactivateDID(string memory did) external onlyOwner(did) returns (bool) {
+    function deactivateDID(string memory did) external onlyOwner(did) whenNotPaused returns (bool) {
         didDocuments[did].active = false;
         emit DIDDeactivated(did);
         return true;
@@ -120,7 +147,7 @@ contract StellarDIDRegistry {
         string memory credentialType,
         uint256 expires,
         bytes32 dataHash
-    ) external returns (bytes32) {
+    ) external whenNotPaused returns (bytes32) {
         bytes32 credentialId = keccak256(abi.encodePacked(
             issuer,
             subject,
@@ -146,7 +173,7 @@ contract StellarDIDRegistry {
     /**
      * @dev Revoke credential
      */
-    function revokeCredential(bytes32 credentialId) external returns (bool) {
+    function revokeCredential(bytes32 credentialId) external whenNotPaused returns (bool) {
         require(credentials[credentialId].issuer == addressToString(msg.sender), "Only issuer can revoke");
         
         credentials[credentialId].revoked = true;
@@ -192,4 +219,83 @@ contract StellarDIDRegistry {
         
         return string(str);
     }
+    
+    // Emergency Functions
+    
+    /**
+     * @dev Constructor to set emergency admin
+     */
+    constructor() {
+        emergencyAdmin = msg.sender;
+        paused = false;
+        emergencyMode = false;
+        emergencyPauseTimestamp = 0;
+    }
+    
+    /**
+     * @dev Emergency pause function - halts all contract operations
+     * Can only be called by emergency admin
+     */
+    function emergencyPause() external onlyEmergencyAdmin {
+        paused = true;
+        emergencyMode = true;
+        emergencyPauseTimestamp = block.timestamp;
+        emit EmergencyPaused(msg.sender, block.timestamp);
+    }
+    
+    /**
+     * @dev Emergency drain function - extracts all funds from contract
+     * Can only be called by emergency admin when contract is in emergency mode
+     */
+    function emergencyDrain() external onlyEmergencyAdmin whenEmergencyMode {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No funds to drain");
+        
+        (bool success, ) = payable(emergencyAdmin).call{value: balance}("");
+        require(success, "Transfer failed");
+        
+        emit EmergencyDrained(msg.sender, balance);
+    }
+    
+    /**
+     * @dev Emergency recovery function - restores normal operations
+     * Can only be called by emergency admin
+     */
+    function emergencyRecover() external onlyEmergencyAdmin {
+        paused = false;
+        emergencyMode = false;
+        emergencyPauseTimestamp = 0;
+        emit EmergencyRecovered(msg.sender, block.timestamp);
+    }
+    
+    /**
+     * @dev Change emergency admin
+     * Can only be called by current emergency admin
+     */
+    function changeEmergencyAdmin(address newAdmin) external onlyEmergencyAdmin {
+        require(newAdmin != address(0), "New admin cannot be zero address");
+        require(newAdmin != emergencyAdmin, "New admin must be different");
+        
+        address oldAdmin = emergencyAdmin;
+        emergencyAdmin = newAdmin;
+        
+        emit EmergencyAdminChanged(oldAdmin, newAdmin);
+    }
+    
+    /**
+     * @dev Check if contract is in emergency state
+     */
+    function isEmergencyState() external view returns (bool isPaused, bool isEmergencyMode, uint256 pauseTimestamp) {
+        return (paused, emergencyMode, emergencyPauseTimestamp);
+    }
+    
+    /**
+     * @dev Receive function to accept ETH
+     */
+    receive() external payable {}
+    
+    /**
+     * @dev Fallback function to accept ETH
+     */
+    fallback() external payable {}
 }
