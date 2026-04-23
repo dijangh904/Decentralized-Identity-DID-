@@ -1,17 +1,20 @@
-use soroban_sdk::{symbol, Address, Bytes, Env, String};
-use stellar_did_contract::{DIDContract, DIDDocument, VerifiableCredential, ContractInfo};
+use soroban_sdk::{Address, Bytes, Env, String};
+use stellar_did_contract::{DIDContract, DIDContractClient};
 
 #[test]
 fn test_contract_initialization() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
     let owner = Address::generate(&env);
     let version = String::from_str(&env, "1.0.0");
     let network = String::from_str(&env, "testnet");
 
-    client.__init(&version, &network, &owner);
+    // Pass constructor args during deployment
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)  // Constructor arguments
+    );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     let info = client.get_contract_info();
     assert_eq!(info.version, version);
@@ -22,16 +25,17 @@ fn test_contract_initialization() {
 #[test]
 fn test_register_and_resolve_did() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    // Pass constructor args during deployment
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Register DID
     let did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -53,16 +57,16 @@ fn test_register_and_resolve_did() {
 #[test]
 fn test_update_did() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Register DID
     let did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -73,7 +77,7 @@ fn test_update_did() {
     let new_public_key = Bytes::from_slice(&env, b"BCDEFGHIJKLMNOPQRSTUVWXYZABCDEF");
     let new_endpoint = Some(String::from_str(&env, "https://newendpoint.com"));
     
-    client.update_did(&did, &Some(new_public_key), &new_endpoint, &owner);
+    client.update_did(&did, &Some(new_public_key.clone()), &new_endpoint, &owner);
 
     // Verify update
     let resolved = client.resolve_did(&did);
@@ -85,16 +89,16 @@ fn test_update_did() {
 #[test]
 fn test_unauthorized_did_update() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Register DID
     let did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -111,16 +115,16 @@ fn test_unauthorized_did_update() {
 #[test]
 fn test_issue_and_verify_credential() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Register issuer DID
     let issuer_did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -135,7 +139,7 @@ fn test_issue_and_verify_credential() {
     // Issue credential
     let credential_type = String::from_str(&env, "UniversityDegree");
     let claims_hash = Bytes::from_slice(&env, b"hash_of_claims_data");
-    let expires = Some(env.ledger().timestamp() + 86400); // 24 hours from now
+    let expires = Some(env.ledger().timestamp() + 86400);
 
     let credential_id = client.issue_credential(
         &issuer_did,
@@ -159,16 +163,16 @@ fn test_issue_and_verify_credential() {
 #[test]
 fn test_revoke_credential() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Register issuer DID
     let issuer_did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -204,16 +208,16 @@ fn test_revoke_credential() {
 #[test]
 fn test_deactivate_did() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Register DID
     let did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -231,16 +235,16 @@ fn test_deactivate_did() {
 #[test]
 fn test_did_exists() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Check non-existent DID
     let did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -257,16 +261,16 @@ fn test_did_exists() {
 #[test]
 fn test_credential_exists() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, DIDContract);
-    let client = DIDContractClient::new(&env, &contract_id);
-
-    // Initialize contract
     let owner = Address::generate(&env);
-    client.__init(
-        &String::from_str(&env, "1.0.0"),
-        &String::from_str(&env, "testnet"),
-        &owner,
+    let version = String::from_str(&env, "1.0.0");
+    let network = String::from_str(&env, "testnet");
+
+    let contract_id = env.register_contract(
+        None,
+        DIDContract,
+        (&version, &network, &owner)
     );
+    let client = DIDContractClient::new(&env, &contract_id);
 
     // Register issuer DID
     let issuer_did = Bytes::from_slice(&env, b"did:stellar:GABCDEFGHIJKLMNOPQRSTUVWXYZ");

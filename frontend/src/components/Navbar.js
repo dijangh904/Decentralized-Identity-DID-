@@ -1,193 +1,114 @@
-import React, { useState } from 'react';
+import React from "react";
+import { NavLink } from "react-router-dom";
 import {
   AppBar,
+  Box,
+  Button,
+  Chip,
+  Stack,
   Toolbar,
   Typography,
-  Button,
-  Box,
-  IconButton,
-  Menu,
-  MenuItem,
-  Chip,
-  Divider,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  AccountTree,
-  AccountBalance,
-  VerifiedUser,
-  School,
-  Info,
-  GitHub,
-  LightMode,
-  DarkMode
-} from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useWallet } from '../hooks/useWallet';
+} from "@mui/material";
+import { QrCodeScanner, AccountBalanceWallet } from "@mui/icons-material";
+import { useWallet } from "../contexts/WalletContext";
+
+const navItems = [
+  { label: "Dashboard", to: "/" },
+  { label: "Create DID", to: "/create-did" },
+  { label: "Resolve DID", to: "/resolve-did" },
+  { label: "Connect Wallet", to: "/connect" },
+  { label: "QR Tools", to: "/scanner" },
+  { label: "Account", to: "/account" },
+];
+
+const linkSx = {
+  color: "inherit",
+  textDecoration: "none",
+  "&.active": {
+    opacity: 1,
+  },
+};
 
 const Navbar = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { wallet, isConnected, connectWallet, disconnectWallet, loading } = useWallet();
-  const [anchorEl, setAnchorEl] = useState(null);
-
-  const menuItems = [
-    { label: 'Dashboard', path: '/', icon: <Info /> },
-    { label: 'Create DID', path: '/create-did', icon: <AccountBalance /> },
-    { label: 'Resolve DID', path: '/resolve-did', icon: <VerifiedUser /> },
-    { label: 'Credentials', path: '/credentials', icon: <School /> },
-    { label: 'Account', path: '/account', icon: <AccountBalance /> },
-    { label: 'Contracts', path: '/contracts', icon: <AccountTree /> },
-  ];
-
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleNavigation = (path) => {
-    navigate(path);
-    handleMenuClose();
-  };
+  const { wallet, isConnected } = useWallet();
 
   return (
-    <AppBar position="static" elevation={2}>
-      <Toolbar>
-        {/* Logo */}
-        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <AccountTree sx={{ mr: 1, fontSize: 28 }} />
-          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-            Stellar DID Platform
-          </Typography>
-        </Box>
+    <AppBar
+      position="sticky"
+      color="transparent"
+      sx={{
+        backdropFilter: "blur(18px)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        backgroundColor: "rgba(9, 19, 26, 0.78)",
+      }}
+    >
+      <Toolbar
+        sx={{
+          gap: 2,
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          py: 1,
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            sx={{
+              width: 42,
+              height: 42,
+              borderRadius: "14px",
+              display: "grid",
+              placeItems: "center",
+              background:
+                "linear-gradient(135deg, rgba(90,209,230,0.9), rgba(255,184,77,0.9))",
+              color: "#081117",
+            }}
+          >
+            <QrCodeScanner />
+          </Box>
+          <Box>
+            <Typography variant="h6">Stellar DID Platform</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Mobile-ready QR wallet flows
+            </Typography>
+          </Box>
+        </Stack>
 
-        {/* Desktop Navigation */}
-        {!isMobile && (
-          <Box sx={{ display: 'flex', gap: 1, mr: 2 }}>
-            {menuItems.map((item) => (
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", md: "center" }}
+        >
+          <Stack
+            direction="row"
+            spacing={0.5}
+            flexWrap="wrap"
+            useFlexGap
+            sx={{ justifyContent: { xs: "flex-start", md: "center" } }}
+          >
+            {navItems.map((item) => (
               <Button
-                key={item.path}
+                key={item.to}
+                component={NavLink}
+                to={item.to}
+                sx={linkSx}
                 color="inherit"
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  backgroundColor: location.pathname === item.path ? 'action.selected' : 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                }}
-                startIcon={item.icon}
               >
                 {item.label}
               </Button>
             ))}
-          </Box>
-        )}
+          </Stack>
 
-        {/* Wallet Status & Actions */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {!isMobile && (
-            <>
-              {isConnected ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Chip
-                    label={`Connected: ${wallet?.publicKey?.substring(0, 8)}...`}
-                    color="success"
-                    size="small"
-                    variant="outlined"
-                    sx={{ borderColor: 'primary.contrastText', color: 'primary.contrastText' }}
-                  />
-                  <Button color="inherit" onClick={disconnectWallet} size="small" disabled={loading}>
-                    Disconnect
-                  </Button>
-                </Box>
-              ) : (
-                <Button color="inherit" onClick={connectWallet} variant="outlined" disabled={loading}>
-                  {loading ? 'Connecting...' : 'Connect Wallet'}
-                </Button>
-              )}
-              
-              <IconButton
-                color="inherit"
-                href="https://github.com/yourusername/stellar-did-platform"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <GitHub />
-              </IconButton>
-            </>
-          )}
-
-          {/* Mobile Menu */}
-          {isMobile && (
-            <>
-              <IconButton
-                color="inherit"
-                onClick={handleMenuOpen}
-              >
-                <MenuIcon />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleMenuClose}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-              >
-                {menuItems.map((item) => (
-                  <MenuItem
-                    key={item.path}
-                    onClick={() => handleNavigation(item.path)}
-                    selected={location.pathname === item.path}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {item.icon}
-                      <Typography sx={{ ml: 1 }}>{item.label}</Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-                
-                <Divider />
-                
-                {isConnected ? (
-                  <MenuItem onClick={disconnectWallet}>
-                    <Typography color="success.main">
-                      Connected: {wallet?.publicKey?.substring(0, 8)}...
-                    </Typography>
-                  </MenuItem>
-                ) : (
-                  <MenuItem onClick={connectWallet} disabled={loading}>
-                    <Typography>{loading ? 'Connecting...' : 'Connect Wallet'}</Typography>
-                  </MenuItem>
-                )}
-                
-                <MenuItem
-                  component="a"
-                  href="https://github.com/yourusername/stellar-did-platform"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <GitHub sx={{ mr: 1 }} />
-                    GitHub
-                  </Box>
-                </MenuItem>
-              </Menu>
-            </>
-          )}
-        </Box>
+          <Chip
+            icon={<AccountBalanceWallet />}
+            color={isConnected ? "success" : "default"}
+            label={
+              isConnected
+                ? `Wallet ${wallet?.publicKey?.slice(0, 6)}...${wallet?.publicKey?.slice(-4)}`
+                : "No wallet connected"
+            }
+            variant={isConnected ? "filled" : "outlined"}
+          />
+        </Stack>
       </Toolbar>
     </AppBar>
   );

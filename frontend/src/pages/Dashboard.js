@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -7,7 +7,6 @@ import {
   Grid,
   Paper,
   LinearProgress,
-  Alert,
   Button,
   Chip,
   List,
@@ -28,25 +27,51 @@ import {
   CloudQueue
 } from '@mui/icons-material';
 import { stellarAPI } from '../services/api';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
+import { handleApiError } from '../utils/errorHandler';
+import ErrorDisplay from '../components/ErrorDisplay';
+
+// Mock data for fallback when API is unavailable
+const MOCK_STATS = {
+  totalDIDs: 742,
+  totalCredentials: 3521,
+  activeUsers: 187,
+  network: 'TESTNET',
+  contractAddress: 'CABC123DEF456GHI789JKL012MNO345PQR',
+  contractVersion: '1.0.0',
+  uptime: '99.9%',
+  avgResponseTime: '245ms',
+  lastRefreshed: new Date().toISOString(),
+  isUsingMockData: true
+};
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const isMountedRef = useRef(false);
+  const wsRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
   const { wallet, isConnected } = useWallet();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [isConnected]);
+  const fetchDashboardData = useCallback(async ({ showLoading = false, signal } = {}) => {
+    if (!isMountedRef.current) return;
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError('');
+    if (showLoading) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
+    setError(null);
+    console.log('Refreshing data...');
 
     try {
-      // Fetch contract info and stats
-      const contractInfo = await stellarAPI.contracts.getInfo();
+      const contractInfo = await stellarAPI.contracts.getInfo({ signal });
+      if (!isMountedRef.current) return;
+
+      const timestamp = new Date().toLocaleTimeString();
       setStats({
         totalDIDs: Math.floor(Math.random() * 1000) + 100,
         totalCredentials: Math.floor(Math.random() * 5000) + 500,
@@ -55,50 +80,163 @@ const Dashboard = () => {
         contractAddress: contractInfo.data.address,
         contractVersion: contractInfo.data.version,
         uptime: '99.9%',
-        avgResponseTime: '245ms'
+        avgResponseTime: '245ms',
+        lastRefreshed: timestamp,
+        isUsingMockData: false
       });
+      console.log(`✓ Data refreshed successfully at ${timestamp}`);
     } catch (err) {
-      setError('Failed to load dashboard data');
+      if (!isMountedRef.current) return;
+      
+      // Fall back to mock data on API error
+      const timestamp = new Date().toLocaleTimeString();
+      console.warn(`✗ API call failed, switching to mock data (${err.message})`);
+      
+      setStats({
+        ...MOCK_STATS,
+        lastRefreshed: timestamp,
+        isUsingMockData: true
+      });
+      
+      // Show subtle error message but continue with mock data
+      setError(handleApiError(err));
     } finally {
-      setLoading(false);
+      if (!isMountedRef.current) return;
+      if (showLoading) setLoading(false);
+      else setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const abortController = new AbortController();
+
+    const setupWebSocket = () => {
+      if (typeof window === 'undefined') return;
+
+      const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = `${scheme}://${window.location.host}/ws`;
+
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        wsRef.current.send(JSON.stringify({ type: 'subscribe', topics: ['did:created', 'did:updated', 'credential:issued', 'credential:revoked', 'contract:deployed'] }));
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'event' && isMountedRef.current) {
+            fetchDashboardData({ showLoading: false, signal: abortController.signal });
+          }
+        } catch {
+          // Ignore malformed ws message
+        }
+      };
+
+      wsRef.current.onclose = () => {
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+        if (isMountedRef.current) {
+          reconnectTimerRef.current = setTimeout(setupWebSocket, 10000);
+        }
+      };
+
+      wsRef.current.onerror = () => {
+        // no-op: onclose will handle reconnect schedule
+      };
+    };
+
+    const initDashboard = async () => {
+      await fetchDashboardData({ showLoading: true, signal: abortController.signal });
+      const intervalId = setInterval(() => {
+        fetchDashboardData({ showLoading: false, signal: abortController.signal });
+      }, 30000);
+
+      setupWebSocket();
+
+      return intervalId;
+    };
+
+    let interval = null;
+    initDashboard().then((id) => {
+      interval = id;
+    });
+
+    return () => {
+      isMountedRef.current = false;
+      abortController.abort();
+      if (interval) clearInterval(interval);
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [isConnected, fetchDashboardData]);
 
   if (loading) {
     return (
-      <Box>
+      <Box component="main" aria-label="Dashboard">
         <Typography variant="h4" gutterBottom>
           Dashboard
         </Typography>
-        <LinearProgress />
+        <LinearProgress aria-label="Loading dashboard data" />
       </Box>
     );
   }
 
   return (
-    <Box>
+    <Box component="main" aria-label="Stellar DID Platform Dashboard">
       <Typography variant="h4" gutterBottom fontWeight="bold">
-        🚀 Stellar DID Platform Dashboard
+        Stellar DID Platform Dashboard
       </Typography>
-      
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="caption" color="text.secondary">
+            Last Refreshed: {stats?.lastRefreshed || 'Never'}
+          </Typography>
+          {stats?.isUsingMockData && (
+            <Chip
+              label="Mock Data"
+              size="small"
+              color="warning"
+              variant="outlined"
+              aria-label="Using mock data because backend is unavailable"
+            />
+          )}
+        </Box>
+        <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
+          <Button
+            variant="outlined"
+            onClick={() => fetchDashboardData({ showLoading: false })}
+            startIcon={<TrendingUp />}
+            disabled={loading || refreshing}
+            aria-label="Refresh dashboard data"
+          >
+            Refresh
+          </Button>
+          {refreshing && (
+            <Typography variant="caption" color="text.secondary" aria-live="polite">
+              Refreshing...
+            </Typography>
+          )}
+        </Box>
+      </Box>
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
+        <ErrorDisplay error={error} onClose={() => setError(null)} />
       )}
 
       {stats && (
-        <Grid container spacing={3}>
+        <Grid container spacing={3} role="region" aria-label="Dashboard statistics">
           {/* Network Status */}
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" mb={2}>
-                  <CloudQueue sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography variant="h6">Network Status</Typography>
+                  <CloudQueue sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                  <Typography variant="h6" component="h2">Network Status</Typography>
                 </Box>
                 <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" id="network-label">
                     Network
                   </Typography>
                   <Chip 
@@ -106,11 +244,12 @@ const Dashboard = () => {
                     color="success" 
                     size="small" 
                     sx={{ mb: 2 }}
+                    aria-labelledby="network-label"
                   />
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" id="contract-address-label">
                     Contract Address
                   </Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  <Typography variant="body1" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }} aria-labelledby="contract-address-label">
                     {stats.contractAddress}
                   </Typography>
                 </Paper>
@@ -123,13 +262,13 @@ const Dashboard = () => {
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" mb={2}>
-                  <TrendingUp sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography variant="h6">Platform Statistics</Typography>
+                  <TrendingUp sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                  <Typography variant="h6" component="h2">Platform Statistics</Typography>
                 </Box>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
+                <Grid container spacing={2} role="list" aria-label="Platform statistics list">
+                  <Grid item xs={6} role="listitem">
                     <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
-                      <Typography variant="h4" color="primary.main">
+                      <Typography variant="h4" color="primary.main" aria-label={`${stats.totalDIDs} total DIDs`}>
                         {stats.totalDIDs}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -137,9 +276,9 @@ const Dashboard = () => {
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid item xs={6} role="listitem">
                     <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
-                      <Typography variant="h4" color="secondary.main">
+                      <Typography variant="h4" color="secondary.main" aria-label={`${stats.totalCredentials} credentials`}>
                         {stats.totalCredentials}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -147,9 +286,9 @@ const Dashboard = () => {
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid item xs={6} role="listitem">
                     <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
-                      <Typography variant="h4" color="success.main">
+                      <Typography variant="h4" color="success.main" aria-label={`${stats.activeUsers} active users`}>
                         {stats.activeUsers}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -157,9 +296,9 @@ const Dashboard = () => {
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid item xs={6} role="listitem">
                     <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
-                      <Typography variant="h4" color="warning.main">
+                      <Typography variant="h4" color="warning.main" aria-label={`${stats.uptime} uptime`}>
                         {stats.uptime}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -177,13 +316,13 @@ const Dashboard = () => {
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" mb={2}>
-                  <VerifiedUser sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography variant="h6">Use Cases</Typography>
+                  <VerifiedUser sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                  <Typography variant="h6" component="h2">Use Cases</Typography>
                 </Box>
-                <List>
+                <List aria-label="DID use cases">
                   <ListItem>
                     <ListItemIcon>
-                      <School color="primary" />
+                      <School color="primary" aria-hidden="true" />
                     </ListItemIcon>
                     <ListItemText 
                       primary="Academic Credentials" 
@@ -193,7 +332,7 @@ const Dashboard = () => {
                   <Divider />
                   <ListItem>
                     <ListItemIcon>
-                      <Work color="primary" />
+                      <Work color="primary" aria-hidden="true" />
                     </ListItemIcon>
                     <ListItemText 
                       primary="Professional Licensing" 
@@ -203,7 +342,7 @@ const Dashboard = () => {
                   <Divider />
                   <ListItem>
                     <ListItemIcon>
-                      <CreditCard color="primary" />
+                      <CreditCard color="primary" aria-hidden="true" />
                     </ListItemIcon>
                     <ListItemText 
                       primary="Age Verification" 
@@ -213,7 +352,7 @@ const Dashboard = () => {
                   <Divider />
                   <ListItem>
                     <ListItemIcon>
-                      <Security color="primary" />
+                      <Security color="primary" aria-hidden="true" />
                     </ListItemIcon>
                     <ListItemText 
                       primary="Identity Verification" 
@@ -230,23 +369,24 @@ const Dashboard = () => {
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" mb={2}>
-                  <Speed sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography variant="h6">Performance Metrics</Typography>
+                  <Speed sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                  <Typography variant="h6" component="h2">Performance Metrics</Typography>
                 </Box>
                 <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <Typography variant="body2" color="text.secondary" gutterBottom id="response-time-label">
                     Average Response Time
                   </Typography>
-                  <Typography variant="h5" color="success.main" gutterBottom>
+                  <Typography variant="h5" color="success.main" gutterBottom aria-labelledby="response-time-label">
                     {stats.avgResponseTime}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <Typography variant="body2" color="text.secondary" gutterBottom id="version-label">
                     Contract Version
                   </Typography>
                   <Chip 
                     label={`v${stats.contractVersion}`} 
                     color="info" 
                     size="small" 
+                    aria-labelledby="version-label"
                   />
                 </Paper>
               </CardContent>
@@ -257,16 +397,17 @@ const Dashboard = () => {
           <Grid item xs={12}>
             <Card>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom component="h2">
                   Quick Actions
                 </Typography>
-                <Grid container spacing={2}>
+                <Grid container spacing={2} role="navigation" aria-label="Quick actions">
                   <Grid item xs={12} sm={6} md={3}>
                     <Button 
                       variant="contained" 
                       fullWidth 
                       href="/create-did"
-                      startIcon={<AccountBalance />}
+                      startIcon={<AccountBalance aria-hidden="true" />}
+                      aria-label="Navigate to Create DID page"
                     >
                       Create DID
                     </Button>
@@ -276,7 +417,8 @@ const Dashboard = () => {
                       variant="outlined" 
                       fullWidth 
                       href="/resolve-did"
-                      startIcon={<VerifiedUser />}
+                      startIcon={<VerifiedUser aria-hidden="true" />}
+                      aria-label="Navigate to Resolve DID page"
                     >
                       Resolve DID
                     </Button>
@@ -286,7 +428,8 @@ const Dashboard = () => {
                       variant="outlined" 
                       fullWidth 
                       href="/credentials"
-                      startIcon={<School />}
+                      startIcon={<School aria-hidden="true" />}
+                      aria-label="Navigate to Manage Credentials page"
                     >
                       Manage Credentials
                     </Button>
@@ -296,7 +439,8 @@ const Dashboard = () => {
                       variant="outlined" 
                       fullWidth 
                       href="/account"
-                      startIcon={<AccountBalance />}
+                      startIcon={<AccountBalance aria-hidden="true" />}
+                      aria-label="Navigate to Account Info page"
                     >
                       Account Info
                     </Button>

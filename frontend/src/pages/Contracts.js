@@ -49,32 +49,46 @@ const Contracts = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchContractInfo();
+    let isMounted = true;
+    const abortController = new AbortController();
+
+    fetchContractInfo(abortController, isMounted);
+
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, []);
 
-  const fetchContractInfo = async () => {
+  const fetchContractInfo = async (abortController, isMounted = true) => {
+    if (!isMounted) return;
+
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       const response = await stellarAPI.contracts.getInfo();
+      
+      if (!isMounted) return; // Check if component is still mounted
+      
       setContractInfo(response.data);
     } catch (err) {
+      if (!isMounted) return;
       const errorInfo = handleApiError(err);
       setError(errorInfo);
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
   };
 
   const handleDeployContract = async () => {
     if (!deployerSecret) {
-      toast.error('Deployer secret key is required');
+      toast.error('Enter your Stellar secret key (starts with S) to deploy the contract. You can find it in your wallet settings.');
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       const response = await stellarAPI.contracts.deploy({
@@ -104,7 +118,7 @@ const Contracts = () => {
   };
 
   return (
-    <Box>
+    <Box component="main" aria-label="Smart contracts page">
       <Typography variant="h4" gutterBottom fontWeight="bold">
         Smart Contracts
       </Typography>
@@ -112,43 +126,48 @@ const Contracts = () => {
         Manage Stellar DID Registry smart contracts
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={3} role="region" aria-label="Contract management">
         {/* Contract Status */}
         <Grid item xs={12} md={8}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
                 <Box display="flex" alignItems="center">
-                  <AccountTree sx={{ mr: 1, color: 'primary.main' }} />
-                  <Typography variant="h6">Contract Status</Typography>
+                  <AccountTree sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                  <Typography variant="h6" component="h2">Contract Status</Typography>
                 </Box>
                 <Button
                   variant="outlined"
-                  startIcon={<Refresh />}
+                  startIcon={<Refresh aria-hidden="true" />}
                   onClick={fetchContractInfo}
                   disabled={loading}
+                  aria-label={loading ? 'Refreshing contract information' : 'Refresh contract information'}
                 >
                   Refresh
                 </Button>
               </Box>
 
               {loading ? (
-                <Box display="flex" justifyContent="center" p={3}>
-                  <CircularProgress />
+                <Box display="flex" justifyContent="center" p={3} role="status" aria-live="polite">
+                  <CircularProgress aria-label="Loading contract data" />
                 </Box>
               ) : contractInfo ? (
                 <Grid container spacing={3}>
                   <Grid item xs={12}>
                     <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom id="contract-address-label">
                         Contract Address
                       </Typography>
                       <Box display="flex" alignItems="center">
-                        <Typography variant="body1" sx={{ fontFamily: 'monospace', mr: 1 }}>
+                        <Typography variant="body1" sx={{ fontFamily: 'monospace', mr: 1 }} aria-labelledby="contract-address-label">
                           {contractInfo.address}
                         </Typography>
                         <Tooltip title="Copy Contract Address">
-                          <IconButton size="small" onClick={() => copyToClipboard(contractInfo.address)}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => copyToClipboard(contractInfo.address)}
+                            aria-label="Copy contract address to clipboard"
+                          >
                             <ContentCopy fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -158,6 +177,7 @@ const Contracts = () => {
                             href={`https://stellar.expert/explorer/testnet/account/${contractInfo.address}`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            aria-label="View contract on Stellar Expert (opens in new tab)"
                           >
                             <Launch fontSize="small" />
                           </IconButton>
@@ -168,36 +188,38 @@ const Contracts = () => {
 
                   <Grid item xs={12} md={6}>
                     <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom id="contract-type-label">
                         Contract Type
                       </Typography>
                       <Chip 
                         label={contractInfo.type} 
                         color="primary" 
                         size="small" 
+                        aria-labelledby="contract-type-label"
                       />
                     </Paper>
                   </Grid>
 
                   <Grid item xs={12} md={6}>
                     <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom id="version-label">
                         Version
                       </Typography>
                       <Chip 
                         label={`v${contractInfo.version}`} 
                         color="info" 
                         size="small" 
+                        aria-labelledby="version-label"
                       />
                     </Paper>
                   </Grid>
 
                   <Grid item xs={12}>
                     <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom id="data-entries-label">
                         Data Entries
                       </Typography>
-                      <Typography variant="h4" color="primary.main">
+                      <Typography variant="h4" color="primary.main" aria-labelledby="data-entries-label">
                         {contractInfo.dataEntries}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -207,7 +229,7 @@ const Contracts = () => {
                   </Grid>
                 </Grid>
               ) : (
-                <Alert severity="warning">
+                <Alert severity="warning" role="alert">
                   No contract information available. Deploy a new contract to get started.
                 </Alert>
               )}
@@ -219,18 +241,19 @@ const Contracts = () => {
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom component="h2">
                 Contract Actions
               </Typography>
               
-              <Grid container spacing={2}>
+              <Grid container spacing={2} role="navigation" aria-label="Contract actions">
                 <Grid item xs={12}>
                   <Button
                     variant="contained"
                     fullWidth
-                    startIcon={<Add />}
+                    startIcon={<Add aria-hidden="true" />}
                     onClick={() => setDeployDialog(true)}
                     disabled={loading}
+                    aria-label="Open dialog to deploy new contract"
                   >
                     Deploy New Contract
                   </Button>
@@ -239,8 +262,9 @@ const Contracts = () => {
                   <Button
                     variant="outlined"
                     fullWidth
-                    startIcon={<Security />}
+                    startIcon={<Security aria-hidden="true" />}
                     href="/create-did"
+                    aria-label="Navigate to Register DID page"
                   >
                     Register DID
                   </Button>
@@ -249,10 +273,11 @@ const Contracts = () => {
                   <Button
                     variant="outlined"
                     fullWidth
-                    startIcon={<Code />}
+                    startIcon={<Code aria-hidden="true" />}
                     href="https://github.com/yourusername/stellar-did-platform/blob/main/contracts/stellar/DIDContract.js"
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label="View contract source code on GitHub (opens in new tab)"
                   >
                     View Source Code
                   </Button>
@@ -267,14 +292,14 @@ const Contracts = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <Security sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6">Contract Features</Typography>
+                <Security sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                <Typography variant="h6" component="h2">Contract Features</Typography>
               </Box>
               
-              <List>
+              <List aria-label="Contract features">
                 <ListItem>
                   <ListItemIcon>
-                    <CheckCircle color="success" />
+                    <CheckCircle color="success" aria-hidden="true" />
                   </ListItemIcon>
                   <ListItemText 
                     primary="DID Registry" 
@@ -284,7 +309,7 @@ const Contracts = () => {
                 <Divider />
                 <ListItem>
                   <ListItemIcon>
-                    <CheckCircle color="success" />
+                    <CheckCircle color="success" aria-hidden="true" />
                   </ListItemIcon>
                   <ListItemText 
                     primary="Credential Management" 
@@ -294,7 +319,7 @@ const Contracts = () => {
                 <Divider />
                 <ListItem>
                   <ListItemIcon>
-                    <CheckCircle color="success" />
+                    <CheckCircle color="success" aria-hidden="true" />
                   </ListItemIcon>
                   <ListItemText 
                     primary="Access Control" 
@@ -304,7 +329,7 @@ const Contracts = () => {
                 <Divider />
                 <ListItem>
                   <ListItemIcon>
-                    <CheckCircle color="success" />
+                    <CheckCircle color="success" aria-hidden="true" />
                   </ListItemIcon>
                   <ListItemText 
                     primary="Event Logging" 
@@ -321,8 +346,8 @@ const Contracts = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <Info sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6">Technical Details</Typography>
+                <Info sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                <Typography variant="h6" component="h2">Technical Details</Typography>
               </Box>
               
               <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
@@ -332,7 +357,7 @@ const Contracts = () => {
                   overflowX: 'auto',
                   maxHeight: '300px',
                   overflowY: 'auto'
-                }}>
+                }} aria-label="Contract technical details JSON">
                   {contractInfo ? JSON.stringify(contractInfo, null, 2) : 'No contract data available'}
                 </Typography>
               </Paper>
@@ -345,11 +370,11 @@ const Contracts = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <Timeline sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6">Recent Contract Operations</Typography>
+                <Timeline sx={{ mr: 1, color: 'primary.main' }} aria-hidden="true" />
+                <Typography variant="h6" component="h2">Recent Contract Operations</Typography>
               </Box>
               
-              <Alert severity="info">
+              <Alert severity="info" role="status">
                 Contract operation history will be displayed here. This feature requires additional indexing.
               </Alert>
             </CardContent>
@@ -358,10 +383,17 @@ const Contracts = () => {
       </Grid>
 
       {/* Deploy Contract Dialog */}
-      <Dialog open={deployDialog} onClose={() => setDeployDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Deploy New Contract</DialogTitle>
+      <Dialog 
+        open={deployDialog} 
+        onClose={() => setDeployDialog(false)} 
+        maxWidth="sm" 
+        fullWidth
+        aria-labelledby="deploy-contract-dialog-title"
+        aria-describedby="deploy-contract-dialog-description"
+      >
+        <DialogTitle id="deploy-contract-dialog-title">Deploy New Contract</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }} id="deploy-contract-dialog-description">
             Deploy a new DID Registry contract to the Stellar network. This will create a new contract account.
           </Typography>
           
@@ -374,18 +406,21 @@ const Contracts = () => {
             margin="normal"
             placeholder="Your Stellar secret key"
             helperText="Make sure this account has enough XLM for deployment"
+            aria-describedby="deployer-secret-helper"
+            id="deployer-secret-input"
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeployDialog(false)}>
+          <Button onClick={() => setDeployDialog(false)} aria-label="Cancel contract deployment">
             Cancel
           </Button>
           <Button 
             onClick={handleDeployContract}
             variant="contained"
             disabled={loading || !deployerSecret}
+            aria-label={loading ? 'Deploying contract' : 'Deploy contract'}
           >
-            {loading ? <CircularProgress size={20} /> : 'Deploy Contract'}
+            {loading ? <CircularProgress size={20} aria-hidden="true" /> : 'Deploy Contract'}
           </Button>
         </DialogActions>
       </Dialog>

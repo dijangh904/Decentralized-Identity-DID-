@@ -68,9 +68,21 @@ class DIDContract {
    * Register a new DID on the contract
    */
   async registerDID(did, publicKey, serviceEndpoint, signerSecret) {
+    if (!did || !publicKey || !signerSecret) {
+      throw new Error('DID, publicKey, and signerSecret are required');
+    }
+    if (!did.startsWith('did:')) {
+      throw new Error('DID must start with "did:"');
+    }
     try {
       const signerKeypair = StellarSDK.Keypair.fromSecret(signerSecret);
       const contractAccount = await this.server.loadAccount(this.contractAddress);
+
+      // Check DID doesn't already exist
+      const existing = contractAccount.data_attr[`did_${did}`];
+      if (existing) {
+        throw new Error('DID already exists');
+      }
 
       const transaction = new StellarSDK.TransactionBuilder(contractAccount, {
         fee: StellarSDK.BASE_FEE * 3,
@@ -113,15 +125,23 @@ class DIDContract {
    * Update DID document
    */
   async updateDID(did, updates, signerSecret) {
+    if (!did || !signerSecret) {
+      throw new Error('DID and signerSecret are required');
+    }
     try {
       const signerKeypair = StellarSDK.Keypair.fromSecret(signerSecret);
       const contractAccount = await this.server.loadAccount(this.contractAddress);
 
       // Get current DID data
       const currentData = await this.getDID(did);
-      
+
       if (!currentData) {
         throw new Error('DID not found');
+      }
+
+      // Ownership check: only the DID owner can update it
+      if (currentData.owner !== signerKeypair.publicKey()) {
+        throw new Error('Unauthorized: only the DID owner can update this DID');
       }
 
       const updatedData = {
@@ -158,9 +178,21 @@ class DIDContract {
    * Issue a verifiable credential
    */
   async issueCredential(issuerDID, subjectDID, credentialType, claims, signerSecret) {
+    if (!issuerDID || !subjectDID || !credentialType || !signerSecret) {
+      throw new Error('issuerDID, subjectDID, credentialType, and signerSecret are required');
+    }
     try {
       const signerKeypair = StellarSDK.Keypair.fromSecret(signerSecret);
       const contractAccount = await this.server.loadAccount(this.contractAddress);
+
+      // Verify the issuer DID exists and the signer is its owner
+      const issuerDoc = await this.getDID(issuerDID);
+      if (!issuerDoc) {
+        throw new Error('Issuer DID not found');
+      }
+      if (issuerDoc.owner !== signerKeypair.publicKey()) {
+        throw new Error('Unauthorized: signer is not the owner of the issuer DID');
+      }
 
       const credentialId = this.generateCredentialId(issuerDID, subjectDID, credentialType);
       
@@ -202,15 +234,31 @@ class DIDContract {
    * Revoke a credential
    */
   async revokeCredential(credentialId, signerSecret) {
+    if (!credentialId || !signerSecret) {
+      throw new Error('credentialId and signerSecret are required');
+    }
     try {
       const signerKeypair = StellarSDK.Keypair.fromSecret(signerSecret);
       const contractAccount = await this.server.loadAccount(this.contractAddress);
 
       // Get current credential
       const credential = await this.getCredential(credentialId);
-      
+
       if (!credential) {
         throw new Error('Credential not found');
+      }
+
+      if (credential.revoked) {
+        throw new Error('Credential is already revoked');
+      }
+
+      // Issuer ownership check: only the issuer's DID owner can revoke
+      const issuerDoc = await this.getDID(credential.issuer);
+      if (!issuerDoc) {
+        throw new Error('Issuer DID not found');
+      }
+      if (issuerDoc.owner !== signerKeypair.publicKey()) {
+        throw new Error('Unauthorized: only the credential issuer can revoke this credential');
       }
 
       const updatedCredential = {

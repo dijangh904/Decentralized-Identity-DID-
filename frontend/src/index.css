@@ -5,8 +5,8 @@ body {
   font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--mui-palette-background-default, #121212);
-  color: var(--mui-palette-text-primary, #ffffff);
+  background-color: #121212;
+  color: #ffffff;
 }
 
 code {
@@ -28,22 +28,22 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--mui-palette-background-paper, #1e1e1e);
+  background: #1e1e1e;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--mui-palette-action-disabled, #4a4a4a);
+  background: #4a4a4a;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--mui-palette-action-focus, #5a5a5a);
+  background: #5a5a5a;
 }
 
 /* Selection color */
 ::selection {
-  background-color: var(--mui-palette-primary-main, #667eea);
-  color: var(--mui-palette-primary-contrastText, white);
+  background-color: #667eea;
+  color: white;
 }
 
 /* Focus styles */
@@ -51,7 +51,7 @@ button:focus,
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid var(--mui-palette-primary-main, #667eea);
+  outline: 2px solid #667eea;
   outline-offset: 2px;
 }
 
@@ -87,8 +87,8 @@ select:focus {
 
 /* Code block styles */
 .code-block {
-  background-color: var(--mui-palette-background-paper, #1e1e1e);
-  border: 1px solid var(--mui-palette-divider, #3a3a3a);
+  background-color: #1e1e1e;
+  border: 1px solid #3a3a3a;
   border-radius: 8px;
   padding: 16px;
   font-family: 'Fira Code', monospace;
@@ -100,15 +100,15 @@ select:focus {
 
 /* Status indicators */
 .status-online {
-  color: var(--mui-palette-success-main, #4caf50);
+  color: #4caf50;
 }
 
 .status-offline {
-  color: var(--mui-palette-error-main, #f44336);
+  color: #f44336;
 }
 
 .status-warning {
-  color: var(--mui-palette-warning-main, #ff9800);
+  color: #ff9800;
 }
 
 /* Responsive utilities */

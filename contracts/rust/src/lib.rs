@@ -1,6 +1,6 @@
 #![no_std]
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, Address, Bytes, Env, String,
+    contract, contracterror, contractimpl, contracttype, Address, Bytes, Env, String, Vec,
     Symbol,
 };
 
@@ -15,6 +15,8 @@ pub enum Error {
     AlreadyRevoked = 4,
     InvalidInput = 5,
     InsufficientBalance = 6,
+    ContractPaused = 7,
+    CredentialExpired = 8,
 }
 
 // Data keys for storage
@@ -76,7 +78,7 @@ pub struct DIDContract;
 #[contractimpl]
 impl DIDContract {
     /// Initialize the contract with version and network
-    pub fn __init__(env: Env, version: String, network: String, owner: Address) {
+     pub fn __constructor(env: Env, version: String, network: String, owner: Address) {
         let info = ContractInfo {
             version,
             network,
@@ -95,6 +97,14 @@ impl DIDContract {
         service_endpoint: Option<String>,
         owner: Address,
     ) -> Result<(), Error> {
+        // Require the owner to sign this transaction
+        owner.require_auth();
+
+        // Validate inputs
+        if did.len() == 0 || public_key.len() == 0 {
+            return Err(Error::InvalidInput);
+        }
+
         // Check if DID already exists
         if env
             .storage()
@@ -146,6 +156,9 @@ impl DIDContract {
         service_endpoint: Option<String>,
         updater: Address,
     ) -> Result<(), Error> {
+        // Require the updater to sign this transaction
+        updater.require_auth();
+
         // Get existing DID document
         let mut did_doc: DIDDocument = env
             .storage()
@@ -156,6 +169,10 @@ impl DIDContract {
         // Check authorization
         if did_doc.owner != updater {
             return Err(Error::Unauthorized);
+        }
+
+        if !did_doc.active {
+            return Err(Error::InvalidInput);
         }
 
         // Update fields if provided
@@ -183,6 +200,9 @@ impl DIDContract {
 
     /// Deactivate DID
     pub fn deactivate_did(env: Env, did: Bytes, deactivator: Address) -> Result<(), Error> {
+        // Require the deactivator to sign this transaction
+        deactivator.require_auth();
+
         let mut did_doc: DIDDocument = env
             .storage()
             .instance()
@@ -192,6 +212,10 @@ impl DIDContract {
         // Check authorization
         if did_doc.owner != deactivator {
             return Err(Error::Unauthorized);
+        }
+
+        if !did_doc.active {
+            return Err(Error::InvalidInput);
         }
 
         did_doc.active = false;
@@ -222,6 +246,21 @@ impl DIDContract {
         expires: Option<u64>,
         issuer_address: Address,
     ) -> Result<Bytes, Error> {
+        // Require the issuer to sign this transaction
+        issuer_address.require_auth();
+
+        // Validate inputs
+        if issuer.len() == 0 || subject.len() == 0 || claims_hash.len() == 0 {
+            return Err(Error::InvalidInput);
+        }
+
+        // Validate expiry is in the future if set
+        if let Some(exp) = expires {
+            if exp <= env.ledger().timestamp() {
+                return Err(Error::InvalidInput);
+            }
+        }
+
         // Verify issuer exists and is authorized
         let issuer_did: DIDDocument = env
             .storage()
@@ -284,6 +323,9 @@ impl DIDContract {
         credential_id: Bytes,
         revoker_address: Address,
     ) -> Result<(), Error> {
+        // Require the revoker to sign this transaction
+        revoker_address.require_auth();
+
         let mut credential: VerifiableCredential = env
             .storage()
             .instance()
@@ -336,7 +378,7 @@ impl DIDContract {
         // Check expiration
         if let Some(expiration) = credential.expires {
             if env.ledger().timestamp() > expiration {
-                return Err(Error::InvalidInput);
+                return Err(Error::CredentialExpired);
             }
         }
 
