@@ -14,6 +14,7 @@ const didRoutes = require('./routes/did');
 const credentialRoutes = require('./routes/credentials');
 const contractRoutes = require('./routes/contracts');
 const authRoutes = require('./routes/auth');
+const monitoringRoutes = require('./routes/monitoring');
 const { logger, errorHandler } = require('./middleware');
 const { connectDatabase } = require('./utils/database');
 const { sanitizeQuery } = require('./middleware/inputValidation');
@@ -133,6 +134,7 @@ app.use("/api/v1/did", didRoutes);
 app.use("/api/v1/credentials", credentialRoutes);
 app.use("/api/v1/contracts", contractRoutes);
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/monitoring", monitoringRoutes);
 
 // Swagger Documentation
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -177,12 +179,16 @@ let wsManager = null;
 process.on("SIGTERM", async () => {
   logger.info("SIGTERM received, shutting down gracefully");
   if (wsManager) await wsManager.close();
+  const monitoringService = require('./services/monitoringService');
+  monitoringService.stopMonitoring();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
   logger.info("SIGINT received, shutting down gracefully");
   if (wsManager) await wsManager.close();
+  const monitoringService = require('./services/monitoringService');
+  monitoringService.stopMonitoring();
   process.exit(0);
 });
 
@@ -206,6 +212,11 @@ async function startServer() {
     // Usage in a route: req.app.get('wsManager').broadcast(EVENTS.DID_CREATED, { ... })
     app.set('wsManager', wsManager);
     app.set('wsEvents', EVENTS);
+
+    // Initialize contract monitoring
+    const monitoringService = require('./services/monitoringService');
+    monitoringService.setWsManager(wsManager);
+    monitoringService.startMonitoring();
 
     // Start listening
     await graphqlServer.startServer(PORT);

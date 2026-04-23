@@ -11,6 +11,7 @@ const EVENTS = {
   CREDENTIAL_ISSUED:    'credential:issued',
   CREDENTIAL_REVOKED:   'credential:revoked',
   CONTRACT_DEPLOYED:    'contract:deployed',
+  CONTRACT_ALERT:       'contract:alert',
 };
 
 class WebSocketManager {
