@@ -344,30 +344,213 @@ class CredentialService {
     }
   }
 
-  // Database/blockchain integration methods (to be implemented based on your storage)
+  // Database/blockchain integration methods (mock implementation for demo)
   async fetchCredentialFromSource(id) {
-    // Implement actual fetch from your database or blockchain
-    throw new Error('fetchCredentialFromSource not implemented');
+    // Mock implementation - in production, this would fetch from database or blockchain
+    const mockCredentials = this.getMockCredentials();
+    return mockCredentials.find(cred => cred.id === id);
   }
 
-  async fetchCredentialsFromSource(query, options) {
-    // Implement actual fetch with pagination and sorting
-    throw new Error('fetchCredentialsFromSource not implemented');
+  async fetchCredentialsFromSource(query, options = {}) {
+    // Mock implementation - in production, this would fetch from database with pagination
+    const { limit = 10, offset = 0, sortBy = 'issued', sortOrder = 'desc' } = options;
+    let credentials = this.getMockCredentials();
+
+    // Apply filters
+    if (query.issuer) {
+      credentials = credentials.filter(cred => cred.issuer.includes(query.issuer));
+    }
+    if (query.subject) {
+      credentials = credentials.filter(cred => cred.subject.includes(query.subject));
+    }
+    if (query.credentialType) {
+      credentials = credentials.filter(cred => cred.credentialType === query.credentialType);
+    }
+    if (query.revoked !== undefined) {
+      credentials = credentials.filter(cred => cred.revoked === query.revoked);
+    }
+    if (query.expired !== undefined) {
+      const now = new Date();
+      if (query.expired) {
+        credentials = credentials.filter(cred => cred.expires && new Date(cred.expires) < now);
+      } else {
+        credentials = credentials.filter(cred => !cred.expires || new Date(cred.expires) >= now);
+      }
+    }
+
+    // Apply sorting
+    credentials.sort((a, b) => {
+      let aVal = a[sortBy];
+      let bVal = b[sortBy];
+      
+      if (sortBy === 'issued' || sortBy === 'expires') {
+        aVal = new Date(aVal);
+        bVal = new Date(bVal);
+      }
+      
+      if (sortOrder === 'desc') {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+      } else {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      }
+    });
+
+    // Apply pagination
+    return credentials.slice(offset, offset + limit);
   }
 
   async countCredentialsFromSource(query) {
-    // Implement actual count
-    throw new Error('countCredentialsFromSource not implemented');
+    // Mock implementation - in production, this would count in database
+    let credentials = this.getMockCredentials();
+
+    // Apply same filters as fetchCredentialsFromSource
+    if (query.issuer) {
+      credentials = credentials.filter(cred => cred.issuer.includes(query.issuer));
+    }
+    if (query.subject) {
+      credentials = credentials.filter(cred => cred.subject.includes(query.subject));
+    }
+    if (query.credentialType) {
+      credentials = credentials.filter(cred => cred.credentialType === query.credentialType);
+    }
+    if (query.revoked !== undefined) {
+      credentials = credentials.filter(cred => cred.revoked === query.revoked);
+    }
+    if (query.expired !== undefined) {
+      const now = new Date();
+      if (query.expired) {
+        credentials = credentials.filter(cred => cred.expires && new Date(cred.expires) < now);
+      } else {
+        credentials = credentials.filter(cred => !cred.expires || new Date(cred.expires) >= now);
+      }
+    }
+
+    return credentials.length;
   }
 
   async saveCredentialToSource(credential) {
-    // Implement actual save
-    throw new Error('saveCredentialToSource not implemented');
+    // Mock implementation - in production, this would save to database or blockchain
+    const mockCredentials = this.getMockCredentials();
+    
+    // Check if credential already exists
+    const existingIndex = mockCredentials.findIndex(cred => cred.id === credential.id);
+    if (existingIndex >= 0) {
+      mockCredentials[existingIndex] = credential;
+    } else {
+      mockCredentials.push(credential);
+    }
+    
+    return credential;
   }
 
-  async searchCredentialsInSource(query, limit) {
-    // Implement actual search
-    throw new Error('searchCredentialsInSource not implemented');
+  async searchCredentialsInSource(query, limit = 10) {
+    // Mock implementation - in production, this would perform full-text search
+    const credentials = this.getMockCredentials();
+    const searchQuery = query.toLowerCase();
+    
+    const results = credentials.filter(cred => {
+      return cred.id.toLowerCase().includes(searchQuery) ||
+             cred.issuer.toLowerCase().includes(searchQuery) ||
+             cred.subject.toLowerCase().includes(searchQuery) ||
+             cred.credentialType.toLowerCase().includes(searchQuery) ||
+             JSON.stringify(cred.claims).toLowerCase().includes(searchQuery);
+    });
+    
+    return results.slice(0, limit);
+  }
+
+  // Helper method to generate mock data for testing
+  getMockCredentials() {
+    const generateCredential = (id, type, issuer, subject, issued, revoked = false) => ({
+      id,
+      issuer,
+      subject,
+      credentialType: type,
+      claims: this.generateMockClaims(type),
+      issued,
+      expires: type === 'age-verification' ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      dataHash: this.calculateDataHash({}),
+      revoked,
+      revokedAt: revoked ? new Date().toISOString() : null,
+      credentialSchema: `https://example.com/schemas/${type}.json`,
+      proof: {
+        type: 'Ed25519Signature2018',
+        creator: `${issuer}#key-1`,
+        created: issued,
+        proofValue: 'mock-signature'
+      }
+    });
+
+    // Generate 75 mock credentials for testing performance
+    const credentials = [];
+    const types = ['university-degree', 'professional-license', 'age-verification', 'employment-verification'];
+    const issuers = [
+      'did:stellar:GABC123DEF456GHI789JKL012MNO345PQR678STU901VWX234YZ',
+      'did:stellar:GDEF789GHI012JKL345MNO678PQR901STU234VWX567YZA890BCD123',
+      'did:stellar:GHI234JKL567MNO890PQR123STU456VWX789YZA012BCD345EFG678'
+    ];
+    const subjects = [
+      'did:stellar:GJKL012MNO345PQR678STU901VWX234YZA567BCD890EFG123HI456',
+      'did:stellar:GMNO678PQR901STU234VWX567YZA890BCD123EFG456HI789JKL012',
+      'did:stellar:GPQR234STU567VWX890YZA123BCD456EFG789HI012JKL345MNO678'
+    ];
+
+    for (let i = 0; i < 75; i++) {
+      const type = types[i % types.length];
+      const issuer = issuers[i % issuers.length];
+      const subject = subjects[i % subjects.length];
+      const issued = new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString();
+      const revoked = i % 20 === 0; // Every 20th credential is revoked
+      
+      credentials.push(generateCredential(
+        `urn:uuid:${i.toString(16).padStart(32, '0')}-${i.toString(16).padStart(8, '0')}-${i.toString(16).padStart(4, '0')}-${i.toString(16).padStart(4, '0')}-${i.toString(16).padStart(12, '0')}`,
+        type,
+        issuer,
+        subject,
+        issued,
+        revoked
+      ));
+    }
+
+    return credentials;
+  }
+
+  generateMockClaims(type) {
+    switch (type) {
+      case 'university-degree':
+        return {
+          degree: ['Bachelor of Science', 'Master of Arts', 'Doctor of Philosophy'][Math.floor(Math.random() * 3)],
+          university: ['MIT', 'Stanford', 'Harvard', 'Oxford', 'Cambridge'][Math.floor(Math.random() * 5)],
+          field: ['Computer Science', 'Mathematics', 'Physics', 'Chemistry', 'Biology'][Math.floor(Math.random() * 5)],
+          gpa: (3.0 + Math.random() * 2.0).toFixed(2),
+          graduationYear: 2018 + Math.floor(Math.random() * 6)
+        };
+      case 'professional-license':
+        return {
+          licenseType: ['Medical Doctor', 'Lawyer', 'Engineer', 'Architect', 'Accountant'][Math.floor(Math.random() * 5)],
+          licenseNumber: `${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+          issuingBoard: ['State Medical Board', 'Bar Association', 'Engineering Board'][Math.floor(Math.random() * 3)],
+          expirationDate: new Date(Date.now() + (365 + Math.random() * 365) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: 'Active'
+        };
+      case 'age-verification':
+        return {
+          ageVerified: true,
+          minimumAge: 18,
+          verificationMethod: 'Government ID',
+          verifiedAt: new Date().toISOString()
+        };
+      case 'employment-verification':
+        return {
+          employer: ['Tech Corp', 'Finance Inc', 'Healthcare LLC', 'Education Group'][Math.floor(Math.random() * 4)],
+          position: ['Software Engineer', 'Manager', 'Analyst', 'Specialist'][Math.floor(Math.random() * 4)],
+          employmentStatus: 'Active',
+          startDate: new Date(Date.now() - Math.random() * 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          department: ['Engineering', 'Sales', 'Marketing', 'HR'][Math.floor(Math.random() * 4)]
+        };
+      default:
+        return {};
+    }
   }
 }
 

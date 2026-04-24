@@ -84,6 +84,10 @@ export const stellarAPI = {
     getTemplates: () => api.get("/credentials/templates"),
     fromTemplate: (data) => api.post("/credentials/from-template", data),
     revoke: (data) => api.post("/credentials/revoke", data),
+    getCredentials: (params) => api.get("/credentials", { params }),
+    getCredential: (id) => api.get(`/credentials/${id}`),
+    search: (query, params) => api.get("/credentials/search", { params: { q: query, ...params } }),
+    getCount: (params) => api.get("/credentials/count", { params }),
   },
 
   // Authentication

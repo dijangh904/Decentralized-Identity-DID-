@@ -14,8 +14,10 @@ import { useWallet } from "../contexts/WalletContext";
 
 const navItems = [
   { label: "Dashboard", to: "/" },
+  { label: "Credentials", to: "/credentials" },
   { label: "Create DID", to: "/create-did" },
   { label: "Resolve DID", to: "/resolve-did" },
+  { label: "Performance Test", to: "/performance-test" },
   { label: "Connect Wallet", to: "/connect" },
   { label: "QR Tools", to: "/scanner" },
   { label: "Account", to: "/account" },
