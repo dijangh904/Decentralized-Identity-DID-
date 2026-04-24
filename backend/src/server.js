@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 
 // Load environment variables
@@ -14,7 +13,7 @@ const didRoutes = require('./routes/did');
 const credentialRoutes = require('./routes/credentials');
 const contractRoutes = require('./routes/contracts');
 const authRoutes = require('./routes/auth');
-const { logger, errorHandler } = require('./middleware');
+const { logger, errorHandler, smartRateLimiter, getRateLimitStatus } = require('./middleware');
 const { connectDatabase } = require('./utils/database');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
@@ -27,12 +26,8 @@ const PORT = process.env.BACKEND_PORT || 3001;
 app.use(helmet());
 app.use(compression());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api', limiter);
+// Smart rate limiting with different limits for different operations
+app.use('/api', smartRateLimiter);
 
 // CORS configuration
 app.use(cors({
@@ -80,10 +75,30 @@ app.get('/api', (req, res) => {
       credentials: '/api/v1/credentials',
       contracts: '/api/v1/contracts',
       auth: '/api/v1/auth',
-      health: '/health'
+      health: '/health',
+      rateLimit: '/api/rate-limit/status'
     },
     documentation: '/api/docs'
   });
+});
+
+// Rate limiting status endpoint
+app.get('/api/rate-limit/status', async (req, res) => {
+  try {
+    const status = await getRateLimitStatus();
+    res.json({
+      success: true,
+      data: status,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('Error getting rate limit status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get rate limit status',
+      message: error.message
+    });
+  }
 });
 
 

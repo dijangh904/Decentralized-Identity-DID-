@@ -19,6 +19,20 @@ contract StellarDIDRegistry {
         string serviceEndpoint;
     }
     
+    // Rate limiting for contract operations
+    struct RateLimit {
+        uint256 lastOperation;
+        uint256 operationCount;
+        uint256 windowStart;
+    }
+    
+    mapping(address => RateLimit) private userRateLimits;
+    
+    // Rate limiting parameters (can be adjusted by contract owner)
+    uint256 public constant RATE_LIMIT_WINDOW = 5 minutes;
+    uint256 public constant MAX_OPERATIONS_PER_WINDOW = 10;
+    uint256 public constant COOLDOWN_PERIOD = 30 seconds;
+    
     struct VerifiableCredential {
         bytes32 id;
         string issuer;
@@ -45,6 +59,72 @@ contract StellarDIDRegistry {
         _;
     }
     
+    modifier rateLimited() {
+        _enforceRateLimit();
+        _;
+    }
+    
+    function _enforceRateLimit() internal {
+        RateLimit storage limit = userRateLimits[msg.sender];
+        uint256 currentTime = block.timestamp;
+        
+        // Reset window if expired
+        if (currentTime >= limit.windowStart + RATE_LIMIT_WINDOW) {
+            limit.windowStart = currentTime;
+            limit.operationCount = 0;
+        }
+        
+        // Enforce cooldown period between operations
+        require(
+            currentTime >= limit.lastOperation + COOLDOWN_PERIOD,
+            "Operation cooldown period not met"
+        );
+        
+        // Enforce maximum operations per window
+        require(
+            limit.operationCount < MAX_OPERATIONS_PER_WINDOW,
+            "Rate limit exceeded for this window"
+        );
+        
+        // Update rate limit tracking
+        limit.lastOperation = currentTime;
+        limit.operationCount++;
+    }
+    
+    function getUserRateLimit(address user) external view returns (
+        uint256 lastOperation,
+        uint256 operationCount,
+        uint256 windowStart,
+        uint256 remainingOperations,
+        uint256 cooldownRemaining
+    ) {
+        RateLimit storage limit = userRateLimits[user];
+        uint256 currentTime = block.timestamp;
+        
+        // Calculate remaining operations
+        uint256 remaining = 0;
+        if (currentTime < limit.windowStart + RATE_LIMIT_WINDOW) {
+            remaining = MAX_OPERATIONS_PER_WINDOW > limit.operationCount ? 
+                MAX_OPERATIONS_PER_WINDOW - limit.operationCount : 0;
+        } else {
+            remaining = MAX_OPERATIONS_PER_WINDOW;
+        }
+        
+        // Calculate cooldown remaining
+        uint256 cooldown = 0;
+        if (currentTime < limit.lastOperation + COOLDOWN_PERIOD) {
+            cooldown = (limit.lastOperation + COOLDOWN_PERIOD) - currentTime;
+        }
+        
+        return (
+            limit.lastOperation,
+            limit.operationCount,
+            limit.windowStart,
+            remaining,
+            cooldown
+        );
+    }
+    
     /**
      * @dev Create a new DID document
      */
@@ -52,7 +132,7 @@ contract StellarDIDRegistry {
         string memory did,
         string memory publicKey,
         string memory serviceEndpoint
-    ) external returns (bool) {
+    ) external rateLimited returns (bool) {
         require(bytes(didDocuments[did].did).length == 0, "DID already exists");
         
         didDocuments[did] = DIDDocument({
@@ -78,7 +158,7 @@ contract StellarDIDRegistry {
         string memory did,
         string memory newPublicKey,
         string memory newServiceEndpoint
-    ) external onlyOwner(did) returns (bool) {
+    ) external onlyOwner(did) rateLimited returns (bool) {
         require(didDocuments[did].active, "DID is not active");
         
         if (bytes(newPublicKey).length > 0) {
@@ -120,7 +200,7 @@ contract StellarDIDRegistry {
         string memory credentialType,
         uint256 expires,
         bytes32 dataHash
-    ) external returns (bytes32) {
+    ) external rateLimited returns (bytes32) {
         bytes32 credentialId = keccak256(abi.encodePacked(
             issuer,
             subject,
