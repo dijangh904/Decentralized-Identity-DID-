@@ -7,44 +7,94 @@ import "./StateRecovery.sol";
 
 /**
  * @title RecoveryGovernance
- * @dev Governance contract for managing state recovery operations
- * Provides additional controls and oversight for recovery processes
+ * @dev Advanced governance contract for managing state recovery operations with additional oversight
+ * 
+ * This contract provides an additional layer of governance control over state recovery operations,
+ * implementing a multi-tiered role system with governors, guardians, and auditors. It offers
+ * contract pausing capabilities, emergency mode activation, and comprehensive audit trails.
+ * 
+ * Key Features:
+ * - Multi-tiered governance system (Governors, Guardians, Auditors)
+ * - Contract pausing and unpausing capabilities
+ * - Emergency mode activation for critical situations
+ * - Comprehensive operation logging and audit trails
+ * - Recovery operation compliance validation
+ * - Governance parameter configuration with time-based controls
+ * 
+ * Governance Roles:
+ * - GOVERNOR_ROLE: Can configure governance parameters and execute recovery operations
+ * - GUARDIAN_ROLE: Can pause/unpause contracts and manage emergency situations
+ * - AUDITOR_ROLE: Can audit recovery operations and access operation history
+ * 
+ * @author Fatima Sanusi
+ * @notice Use this contract to govern and oversee state recovery operations
+ * @dev Implements OpenZeppelin AccessControl and ReentrancyGuard for security
  */
 contract RecoveryGovernance is AccessControl, ReentrancyGuard {
     
-    // Governance roles
+    /// @notice Role for governors who can configure governance parameters and execute recovery operations
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
+    
+    /// @notice Role for guardians who can pause/unpause contracts and manage emergency situations
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
+    
+    /// @notice Role for auditors who can audit recovery operations and access operation history
     bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
     
-    // Governance parameters
+    /// @notice Structure containing governance configuration parameters
+    /// @dev Defines time-based controls and operational parameters for recovery governance
     struct GovernanceConfig {
+        /// @notice Minimum delay between proposal creation and execution
         uint256 minProposalDelay;
+        /// @notice Maximum voting period for recovery proposals
         uint256 maxVotingPeriod;
+        /// @notice Delay period for emergency recovery operations
         uint256 emergencyDelay;
+        /// @notice Percentage of votes required for quorum (0-100)
         uint256 quorumPercentage;
+        /// @notice Whether emergency mode is currently active
         bool emergencyMode;
+        /// @notice Address of the currently paused contract (if any)
         address pausedContract;
     }
     
-    // Recovery operation tracking
+    /// @notice Structure tracking individual recovery operations
+    /// @dev Provides comprehensive audit trail for all recovery operations
     struct RecoveryOperation {
+        /// @notice Unique identifier of the recovery proposal
         bytes32 proposalId;
+        /// @notice Timestamp when the operation was executed
         uint256 timestamp;
+        /// @notice Address that executed the recovery operation
         address executor;
+        /// @notice Whether this was an emergency recovery operation
         bool emergency;
+        /// @notice Reason provided for the recovery operation
         string reason;
+        /// @notice Whether the recovery operation was successful
         bool successful;
     }
     
-    // Storage
+    /// @notice Current governance configuration
     GovernanceConfig public config;
+    
+    /// @notice Reference to the StateRecovery contract
     StateRecovery public stateRecovery;
+    
+    /// @notice Mapping of authorized contract addresses
     mapping(address => bool) public authorizedContracts;
+    
+    /// @notice Mapping of proposal IDs to their recovery operations
     mapping(bytes32 => RecoveryOperation) public recoveryOperations;
+    
+    /// @notice Array containing all recovery operations for historical tracking
     RecoveryOperation[] public operationHistory;
     
-    // Events
+    /// @notice Emitted when governance configuration parameters are updated
+    /// @param minProposalDelay New minimum proposal delay
+    /// @param maxVotingPeriod New maximum voting period
+    /// @param emergencyDelay New emergency delay period
+    /// @param quorumPercentage New quorum percentage requirement
     event GovernanceConfigUpdated(
         uint256 minProposalDelay,
         uint256 maxVotingPeriod,
@@ -52,9 +102,20 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
         uint256 quorumPercentage
     );
     
+    /// @notice Emitted when a contract is paused
+    /// @param contractAddress Address of the paused contract
+    /// @param reason Reason for pausing the contract
     event ContractPaused(address indexed contractAddress, string reason);
+    
+    /// @notice Emitted when a contract is unpaused
+    /// @param contractAddress Address of the unpaused contract
     event ContractUnpaused(address indexed contractAddress);
     
+    /// @notice Emitted when a recovery operation is logged
+    /// @param proposalId Unique identifier of the recovery proposal
+    /// @param executor Address that executed the recovery operation
+    /// @param emergency Whether this was an emergency recovery
+    /// @param successful Whether the recovery operation was successful
     event RecoveryOperationLogged(
         bytes32 indexed proposalId,
         address indexed executor,
@@ -62,30 +123,50 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
         bool successful
     );
     
+    /// @notice Emitted when emergency mode is activated
+    /// @param activator Address that activated emergency mode
+    /// @param reason Reason for activating emergency mode
     event EmergencyModeActivated(address indexed activator, string reason);
+    
+    /// @notice Emitted when emergency mode is deactivated
+    /// @param deactivator Address that deactivated emergency mode
     event EmergencyModeDeactivated(address indexed deactivator);
     
+    /// @notice Restricts access to addresses with the GOVERNOR_ROLE
+    /// @dev Throws if the caller does not have the GOVERNOR_ROLE
     modifier onlyGovernor() {
         require(hasRole(GOVERNOR_ROLE, msg.sender), "RecoveryGovernance: caller missing GOVERNOR_ROLE");
         _;
     }
     
+    /// @notice Restricts access to addresses with the GUARDIAN_ROLE
+    /// @dev Throws if the caller does not have the GUARDIAN_ROLE
     modifier onlyGuardian() {
         require(hasRole(GUARDIAN_ROLE, msg.sender), "RecoveryGovernance: caller missing GUARDIAN_ROLE");
         _;
     }
     
+    /// @notice Restricts access to addresses with the AUDITOR_ROLE
+    /// @dev Throws if the caller does not have the AUDITOR_ROLE
     modifier onlyAuditor() {
         require(hasRole(AUDITOR_ROLE, msg.sender), "RecoveryGovernance: caller missing AUDITOR_ROLE");
         _;
     }
     
+    /// @notice Validates that a contract is not paused
+    /// @param contractAddress Address of the contract to check
+    /// @dev Throws if the contract is paused
     modifier whenNotPaused(address contractAddress) {
         require(!authorizedContracts[contractAddress] || config.pausedContract != contractAddress, 
                 "RecoveryGovernance: contract is paused");
         _;
     }
     
+    /**
+     * @notice Initializes the RecoveryGovernance contract
+     * @dev Sets up the contract with default roles and governance configuration
+     * @param _stateRecovery Address of the StateRecovery contract to govern
+     */
     constructor(address _stateRecovery) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(GOVERNOR_ROLE, msg.sender);

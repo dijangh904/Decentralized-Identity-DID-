@@ -7,20 +7,43 @@ import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
 
 /**
  * @title DIDProxy
- * @dev UUPS Proxy implementation for the DID Registry system
- * This contract serves as the proxy that delegates calls to the implementation
+ * @dev UUPS Proxy implementation for the DID Registry system with comprehensive security
+ * 
+ * This contract serves as a secure proxy that delegates all calls to the implementation
+ * contract while maintaining upgradeability through the UUPS (Universal Upgradeable
+ * Proxy Standard) pattern. It provides a stable address for users to interact with
+ * while allowing the underlying implementation to be upgraded.
+ * 
+ * Key Features:
+ * - UUPS proxy pattern for gas-efficient upgrades
+ * - Secure initialization to prevent reinitialization attacks
+ * - Ownership-based access control for upgrade authorization
+ * - Transparent delegation to implementation contract
+ * - Event emission for upgrade tracking
+ * 
+ * Security Measures:
+ * - Constructor disabled to prevent initialization attacks
+ * - Only contract owner can authorize upgrades
+ * - Proper initialization sequence with validation
+ * - Storage isolation between proxy and implementation
+ * 
+ * @author Fatima Sanusi
+ * @notice Use this contract as the stable proxy address for DID registry interactions
+ * @dev Implements Initializable, UUPSUpgradeable, and OwnableUpgradeable
  */
 contract DIDProxy is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     
     /// @custom:oz-upgrades-unsafe-allow constructor
+    /// @notice Constructor is disabled to prevent initialization attacks
     constructor() {
-        // Disable initialization to prevent reinitialization attacks
         _disableInitializers();
     }
     
     /**
-     * @dev Initialize the proxy contract
-     * @param initialOwner The address that will own the proxy
+     * @notice Initializes the proxy contract with the specified owner
+     * @dev Sets up the proxy with ownership and upgradeability features
+     * @param initialOwner The address that will own the proxy contract
+     * @throws InitializationFailed if initialization parameters are invalid
      */
     function initialize(address initialOwner) public initializer {
         require(initialOwner != address(0), "Initial owner cannot be zero address");
