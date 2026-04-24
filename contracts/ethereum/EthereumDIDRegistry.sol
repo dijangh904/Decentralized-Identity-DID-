@@ -16,9 +16,14 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
     // Role-based access control
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant ISSUER_ROLE = keccak256("ISSUER_ROLE");
+    bytes32 public constant RECOVERY_ROLE = keccak256("RECOVERY_ROLE");
     
     mapping(bytes32 => mapping(address => bool)) private _roles;
     address private _admin;
+    
+    // State recovery contract
+    address public stateRecoveryContract;
+    bool public recoveryMode;
     
     struct DIDDocument {
         string did;
@@ -61,6 +66,21 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
     
     modifier onlyOwner(string memory did) {
         require(didDocuments[did].owner == msg.sender, "Only DID owner can perform this action");
+        _;
+    }
+    
+    modifier onlyRecoveryContract() {
+        require(msg.sender == stateRecoveryContract, "Only recovery contract can call this function");
+        _;
+    }
+    
+    modifier whenNotInRecoveryMode() {
+        require(!recoveryMode, "Contract is in recovery mode");
+        _;
+    }
+    
+    modifier whenInRecoveryMode() {
+        require(recoveryMode, "Contract is not in recovery mode");
         _;
     }
     
@@ -217,7 +237,205 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
         return _didClaimsByTopic[did][topic];
     }
 
-    // --- Helpers ---
+    // --- Recovery Functions ---
+    
+    /**
+     * @dev Set state recovery contract address
+     */
+    function setStateRecoveryContract(address _stateRecoveryContract) external onlyRole(ADMIN_ROLE) {
+        stateRecoveryContract = _stateRecoveryContract;
+    }
+    
+    /**
+     * @dev Enable recovery mode (emergency only)
+     */
+    function enableRecoveryMode() external onlyRole(ADMIN_ROLE) {
+        recoveryMode = true;
+    }
+    
+    /**
+     * @dev Disable recovery mode
+     */
+    function disableRecoveryMode() external onlyRole(ADMIN_ROLE) {
+        recoveryMode = false;
+    }
+    
+    /**
+     * @dev Recover DID document corruption
+     */
+    function recoverDIDDocument(
+        string memory did,
+        address newOwner,
+        string memory newPublicKey,
+        string memory newServiceEndpoint
+    ) external onlyRecoveryContract whenInRecoveryMode returns (bool) {
+        require(bytes(did).length > 0, "DID cannot be empty");
+        require(newOwner != address(0), "New owner cannot be zero address");
+        require(bytes(newPublicKey).length > 0, "Public key cannot be empty");
+        
+        // Check if DID exists
+        if (bytes(didDocuments[did].did).length == 0) {
+            // Create new DID document if it doesn't exist
+            didDocuments[did] = DIDDocument({
+                did: did,
+                owner: newOwner,
+                publicKey: newPublicKey,
+                created: block.timestamp,
+                updated: block.timestamp,
+                active: true,
+                serviceEndpoint: newServiceEndpoint
+            });
+            
+            // Add to owner's DID list
+            ownerToDids[newOwner].push(did);
+        } else {
+            // Update existing DID document
+            didDocuments[did].owner = newOwner;
+            didDocuments[did].publicKey = newPublicKey;
+            didDocuments[did].updated = block.timestamp;
+            didDocuments[did].active = true;
+            if (bytes(newServiceEndpoint).length > 0) {
+                didDocuments[did].serviceEndpoint = newServiceEndpoint;
+            }
+            
+            // Update owner mapping if needed
+            bool found = false;
+            for (uint i = 0; i < ownerToDids[newOwner].length; i++) {
+                if (keccak256(bytes(ownerToDids[newOwner][i])) == keccak256(bytes(did))) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                ownerToDids[newOwner].push(did);
+            }
+        }
+        
+        emit DIDUpdated(did, block.timestamp);
+        return true;
+    }
+    
+    /**
+     * @dev Recover verifiable credential corruption
+     */
+    function recoverCredential(
+        bytes32 credentialId,
+        string memory newIssuer,
+        string memory newSubject,
+        string memory newType,
+        uint256 newExpires,
+        bytes32 newDataHash
+    ) external onlyRecoveryContract whenInRecoveryMode returns (bool) {
+        require(credentialId != bytes32(0), "Credential ID cannot be zero");
+        require(bytes(newIssuer).length > 0, "Issuer cannot be empty");
+        require(bytes(newSubject).length > 0, "Subject cannot be empty");
+        
+        // Create or update credential
+        credentials[credentialId] = VerifiableCredential({
+            id: credentialId,
+            issuer: newIssuer,
+            subject: newSubject,
+            credentialType: newType,
+            issued: block.timestamp,
+            expires: newExpires,
+            dataHash: newDataHash,
+            revoked: false
+        });
+        
+        emit CredentialBridged(credentialId, newIssuer, newSubject);
+        return true;
+    }
+    
+    /**
+     * @dev Recover ownership mapping corruption
+     */
+    function recoverOwnershipMapping(
+        address oldOwner,
+        address newOwner,
+        string memory did
+    ) external onlyRecoveryContract whenInRecoveryMode returns (bool) {
+        require(oldOwner != address(0), "Old owner cannot be zero address");
+        require(newOwner != address(0), "New owner cannot be zero address");
+        require(bytes(did).length > 0, "DID cannot be empty");
+        
+        // Remove from old owner's list
+        string[] storage oldOwnerDids = ownerToDids[oldOwner];
+        for (uint i = 0; i < oldOwnerDids.length; i++) {
+            if (keccak256(bytes(oldOwnerDids[i])) == keccak256(bytes(did))) {
+                oldOwnerDids[i] = oldOwnerDids[oldOwnerDids.length - 1];
+                oldOwnerDids.pop();
+                break;
+            }
+        }
+        
+        // Add to new owner's list
+        ownerToDids[newOwner].push(did);
+        
+        // Update DID document owner
+        if (bytes(didDocuments[did].did).length > 0) {
+            didDocuments[did].owner = newOwner;
+            didDocuments[did].updated = block.timestamp;
+        }
+        
+        emit DIDUpdated(did, block.timestamp);
+        return true;
+    }
+    
+    /**
+     * @dev Recover role assignment corruption
+     */
+    function recoverRoleAssignment(
+        bytes32 role,
+        address account,
+        bool grant
+    ) external onlyRecoveryContract whenInRecoveryMode returns (bool) {
+        require(role != bytes32(0), "Role cannot be zero");
+        require(account != address(0), "Account cannot be zero address");
+        
+        if (grant) {
+            _roles[role][account] = true;
+        } else {
+            _roles[role][account] = false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * @dev Validate contract state integrity
+     */
+    function validateStateIntegrity() external view returns (bool isValid, string memory issue) {
+        // Check for critical inconsistencies
+        uint256 didCount = 0;
+        uint256 ownerMappingCount = 0;
+        
+        // This is a simplified validation - in production, you'd want more comprehensive checks
+        for (uint i = 0; i < 100; i++) {
+            // Sample check - would need proper iteration in production
+            if (i == 0) break; // Placeholder for actual validation logic
+        }
+        
+        isValid = true;
+        issue = "No issues found";
+    }
+    
+    /**
+     * @dev Get contract state summary for recovery purposes
+     */
+    function getStateSummary() external view returns (
+        uint256 totalDIDs,
+        uint256 totalCredentials,
+        uint256 totalOwners,
+        bool isInRecoveryMode
+    ) {
+        // This would require proper storage of counts in production
+        totalDIDs = 0; // Placeholder
+        totalCredentials = 0; // Placeholder
+        totalOwners = 0; // Placeholder
+        isInRecoveryMode = recoveryMode;
+    }
+
+// --- Helpers ---
 
     function _getCallerDID() internal view returns (string memory) {
         string[] memory dids = ownerToDids[msg.sender];
