@@ -114,9 +114,15 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
         uint256 _emergencyDelay,
         uint256 _quorumPercentage
     ) external onlyGovernor {
-        require(_minProposalDelay > 0, "Invalid minimum proposal delay");
+        require(_minProposalDelay >= 60, "Minimum proposal delay too short");
+        require(_minProposalDelay <= 7 days, "Minimum proposal delay too long");
+        require(_maxVotingPeriod >= 1 hours, "Voting period too short");
+        require(_maxVotingPeriod <= 30 days, "Voting period too long");
         require(_maxVotingPeriod > _minProposalDelay, "Invalid voting period");
-        require(_quorumPercentage > 0 && _quorumPercentage <= 100, "Invalid quorum percentage");
+        require(_emergencyDelay >= 1 hours, "Emergency delay too short");
+        require(_emergencyDelay <= 7 days, "Emergency delay too long");
+        require(_quorumPercentage >= 1, "Quorum percentage too low");
+        require(_quorumPercentage <= 100, "Invalid quorum percentage");
         
         config.minProposalDelay = _minProposalDelay;
         config.maxVotingPeriod = _maxVotingPeriod;
@@ -130,6 +136,9 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
      * @dev Authorize a contract for governance oversight
      */
     function authorizeContract(address contractAddress) external onlyGovernor {
+        require(contractAddress != address(0), "Contract cannot be zero address");
+        require(contractAddress.code.length > 0, "Must be a contract address");
+        require(!authorizedContracts[contractAddress], "Contract already authorized");
         authorizedContracts[contractAddress] = true;
     }
     
@@ -137,6 +146,8 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
      * @dev Deauthorize a contract
      */
     function deauthorizeContract(address contractAddress) external onlyGovernor {
+        require(contractAddress != address(0), "Contract cannot be zero address");
+        require(authorizedContracts[contractAddress], "Contract not authorized");
         authorizedContracts[contractAddress] = false;
         if (config.pausedContract == contractAddress) {
             config.pausedContract = address(0);
@@ -148,8 +159,13 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
      * @dev Pause a contract (guardian action)
      */
     function pauseContract(address contractAddress, string memory reason) external onlyGuardian {
+        require(contractAddress != address(0), "Contract cannot be zero address");
+        require(contractAddress.code.length > 0, "Must be a contract address");
         require(authorizedContracts[contractAddress], "Contract not authorized");
         require(contractAddress != address(stateRecovery), "Cannot pause recovery contract");
+        require(config.pausedContract != contractAddress, "Contract already paused");
+        require(bytes(reason).length > 0, "Reason cannot be empty");
+        require(bytes(reason).length <= 512, "Reason too long");
         
         config.pausedContract = contractAddress;
         emit ContractPaused(contractAddress, reason);
@@ -159,6 +175,7 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
      * @dev Unpause a contract
      */
     function unpauseContract(address contractAddress) external onlyGuardian {
+        require(contractAddress != address(0), "Contract cannot be zero address");
         require(config.pausedContract == contractAddress, "Contract not paused");
         
         config.pausedContract = address(0);
@@ -169,6 +186,9 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
      * @dev Activate emergency mode (governor action)
      */
     function activateEmergencyMode(string memory reason) external onlyGovernor {
+        require(!config.emergencyMode, "Emergency mode already active");
+        require(bytes(reason).length > 0, "Reason cannot be empty");
+        require(bytes(reason).length <= 512, "Reason too long");
         config.emergencyMode = true;
         emit EmergencyModeActivated(msg.sender, reason);
     }
@@ -177,6 +197,7 @@ contract RecoveryGovernance is AccessControl, ReentrancyGuard {
      * @dev Deactivate emergency mode
      */
     function deactivateEmergencyMode() external onlyGovernor {
+        require(config.emergencyMode, "Emergency mode not active");
         config.emergencyMode = false;
         emit EmergencyModeDeactivated(msg.sender);
     }

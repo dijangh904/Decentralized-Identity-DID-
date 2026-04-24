@@ -45,6 +45,9 @@ contract DIDGovernanceToken is ERC20, ERC20Votes, Ownable {
      * @dev Mint new tokens (only authorized minters)
      */
     function mint(address to, uint256 amount) external onlyMinter {
+        require(to != address(0), "Cannot mint to zero address");
+        require(amount > 0, "Amount must be greater than zero");
+        require(amount <= 1000000 * 10**18, "Amount exceeds single mint limit");
         require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
         _mint(to, amount);
         emit TokensMinted(to, amount);
@@ -54,7 +57,10 @@ contract DIDGovernanceToken is ERC20, ERC20Votes, Ownable {
      * @dev Burn tokens (only authorized burners)
      */
     function burn(address from, uint256 amount) external onlyBurner {
-        require(balanceOf(from) >= amount, "Insufficient balance");
+        require(from != address(0), "Cannot burn from zero address");
+        require(amount > 0, "Amount must be greater than zero");
+        require(amount <= balanceOf(from), "Insufficient balance");
+        require(amount <= 1000000 * 10**18, "Amount exceeds single burn limit");
         _burn(from, amount);
         emit TokensBurned(from, amount);
     }
@@ -63,6 +69,8 @@ contract DIDGovernanceToken is ERC20, ERC20Votes, Ownable {
      * @dev Add a new minter
      */
     function addMinter(address minter) external onlyOwner {
+        require(minter != address(0), "Minter cannot be zero address");
+        require(minter != msg.sender, "Cannot grant minter role to self");
         require(!isMinter[minter], "Already a minter");
         isMinter[minter] = true;
         emit MinterAdded(minter);
@@ -72,6 +80,7 @@ contract DIDGovernanceToken is ERC20, ERC20Votes, Ownable {
      * @dev Remove a minter
      */
     function removeMinter(address minter) external onlyOwner {
+        require(minter != address(0), "Minter cannot be zero address");
         require(isMinter[minter], "Not a minter");
         isMinter[minter] = false;
         emit MinterRemoved(minter);
@@ -81,6 +90,8 @@ contract DIDGovernanceToken is ERC20, ERC20Votes, Ownable {
      * @dev Add a new burner
      */
     function addBurner(address burner) external onlyOwner {
+        require(burner != address(0), "Burner cannot be zero address");
+        require(burner != msg.sender, "Cannot grant burner role to self");
         require(!isBurner[burner], "Already a burner");
         isBurner[burner] = true;
         emit BurnerAdded(burner);
@@ -90,6 +101,7 @@ contract DIDGovernanceToken is ERC20, ERC20Votes, Ownable {
      * @dev Remove a burner
      */
     function removeBurner(address burner) external onlyOwner {
+        require(burner != address(0), "Burner cannot be zero address");
         require(isBurner[burner], "Not a burner");
         isBurner[burner] = false;
         emit BurnerRemoved(burner);

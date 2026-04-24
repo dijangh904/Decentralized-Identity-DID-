@@ -149,6 +149,12 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         address _ethereumDIDRegistry,
         address _stellarDIDRegistry
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_ethereumDIDRegistry != address(0), "Ethereum DID registry cannot be zero address");
+        require(_stellarDIDRegistry != address(0), "Stellar DID registry cannot be zero address");
+        require(_ethereumDIDRegistry != _stellarDIDRegistry, "Registry addresses cannot be the same");
+        require(_ethereumDIDRegistry.code.length > 0, "Ethereum registry must be a contract");
+        require(_stellarDIDRegistry.code.length > 0, "Stellar registry must be a contract");
+        
         ethereumDIDRegistry = _ethereumDIDRegistry;
         stellarDIDRegistry = _stellarDIDRegistry;
     }
@@ -160,11 +166,17 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         bytes32 merkleRoot,
         string memory description
     ) external onlyRecoveryRole returns (bytes32) {
+        require(merkleRoot != bytes32(0), "Merkle root cannot be zero");
+        require(bytes(description).length > 0, "Description cannot be empty");
+        require(bytes(description).length <= 1024, "Description too long");
+        
         bytes32 snapshotId = keccak256(abi.encodePacked(
             block.timestamp,
             msg.sender,
             merkleRoot
         ));
+        
+        require(stateSnapshots[snapshotId].timestamp == 0, "Snapshot already exists");
         
         stateSnapshots[snapshotId] = StateSnapshot({
             id: snapshotId,
@@ -187,8 +199,11 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         string memory description,
         bytes memory data
     ) external onlyRecoveryRole returns (bytes32) {
+        require(uint256(recoveryType) <= 4, "Invalid recovery type");
         require(bytes(description).length > 0, "StateRecovery: description cannot be empty");
+        require(bytes(description).length <= 1024, "Description too long");
         require(data.length > 0, "StateRecovery: recovery data cannot be empty");
+        require(data.length <= 10240, "Recovery data too large");
         
         bytes32 proposalId = keccak256(abi.encodePacked(
             recoveryType,
@@ -224,6 +239,8 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         bool approve,
         string memory reason
     ) external onlyRecoveryRole validProposal(proposalId) {
+        require(bytes(reason).length <= 512, "Reason too long");
+        
         RecoveryProposal storage proposal = recoveryProposals[proposalId];
         
         require(block.timestamp <= proposal.votingDeadline, "StateRecovery: voting period ended");
@@ -443,7 +460,11 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         bytes memory data,
         string memory reason
     ) external onlyEmergencyRole nonReentrant returns (bool) {
+        require(uint256(recoveryType) <= 4, "Invalid recovery type");
+        require(data.length > 0, "Recovery data cannot be empty");
+        require(data.length <= 10240, "Recovery data too large");
         require(bytes(reason).length > 0, "StateRecovery: reason cannot be empty");
+        require(bytes(reason).length <= 512, "Reason too long");
         
         emit EmergencyRecoveryTriggered(msg.sender, reason, block.timestamp);
         
@@ -458,7 +479,9 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         external 
         onlyGovernanceRole 
     {
+        require(uint256(recoveryType) <= 4, "Invalid recovery type");
         require(required > 0, "StateRecovery: required approvals must be greater than 0");
+        require(required <= 20, "Required approvals too high");
         requiredApprovals[recoveryType] = required;
     }
     

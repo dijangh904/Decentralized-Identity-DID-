@@ -89,6 +89,10 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
     }
 
     function grantRole(bytes32 role, address account) external onlyRole(ADMIN_ROLE) {
+        require(role != bytes32(0), "Role cannot be zero");
+        require(account != address(0), "Account cannot be zero address");
+        require(account != msg.sender, "Cannot grant role to self");
+        require(!_roles[role][account], "Account already has this role");
         _roles[role][account] = true;
     }
     
@@ -101,6 +105,12 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
         string memory publicKey,
         string memory serviceEndpoint
     ) external onlyRole(ADMIN_ROLE) returns (bool) {
+        require(bytes(did).length > 0, "DID cannot be empty");
+        require(bytes(did).length <= 256, "DID too long");
+        require(ownerAddress != address(0), "Owner cannot be zero address");
+        require(bytes(publicKey).length > 0, "Public key cannot be empty");
+        require(bytes(publicKey).length <= 2048, "Public key too long");
+        require(bytes(serviceEndpoint).length <= 512, "Service endpoint too long");
         require(didDocuments[did].owner == address(0), "DID already exists on this chain");
         
         didDocuments[did] = DIDDocument({
@@ -129,6 +139,16 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
         uint256 expires,
         bytes32 dataHash
     ) external onlyRole(ADMIN_ROLE) returns (bytes32) {
+        require(credentialId != bytes32(0), "Credential ID cannot be zero");
+        require(bytes(issuer).length > 0, "Issuer cannot be empty");
+        require(bytes(issuer).length <= 256, "Issuer name too long");
+        require(bytes(subject).length > 0, "Subject cannot be empty");
+        require(bytes(subject).length <= 256, "Subject name too long");
+        require(bytes(credentialType).length > 0, "Credential type cannot be empty");
+        require(bytes(credentialType).length <= 128, "Credential type too long");
+        require(expires > block.timestamp, "Expiration must be in the future");
+        require(expires <= block.timestamp + 365 days, "Expiration too far in future");
+        require(dataHash != bytes32(0), "Data hash cannot be zero");
         require(credentials[credentialId].issued == 0, "Credential already exists");
         
         credentials[credentialId] = VerifiableCredential({
@@ -157,6 +177,8 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
     // --- IERC725 Implementation ---
 
     function setData(bytes32 key, bytes memory value) external override {
+        require(key != bytes32(0), "Key cannot be zero");
+        require(value.length <= 2048, "Value too large");
         string memory did = _getCallerDID();
         _didData[did][key] = value;
         emit DataChanged(key, value);
@@ -170,6 +192,12 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
     function execute(uint256 operationType, address target, uint256 value, bytes memory data) 
         external override returns (bytes memory) 
     {
+        require(target != address(0), "Target cannot be zero address");
+        require(target != address(this), "Cannot call contract itself");
+        require(value <= 100 ether, "Value too high");
+        require(data.length <= 10240, "Data too large");
+        require(operationType <= 255, "Operation type out of range");
+        
         string memory did = _getCallerDID();
         require(didDocuments[did].owner == msg.sender, "Only DID owner can execute calls");
         
@@ -185,6 +213,13 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
     function addClaim(uint256 topic, uint256 scheme, address issuer, bytes memory signature, bytes memory data, string memory uri) 
         external override returns (bytes32 claimId) 
     {
+        require(topic <= 1000000, "Topic number too large");
+        require(scheme <= 255, "Scheme number too large");
+        require(issuer != address(0), "Issuer cannot be zero address");
+        require(signature.length <= 132, "Invalid signature length");
+        require(data.length <= 2048, "Claim data too large");
+        require(bytes(uri).length <= 512, "URI too long");
+        
         string memory did = _getCallerDID();
         // Standard ERC735: identity owner or issuer adds claim
         require(didDocuments[did].owner == msg.sender || msg.sender == issuer, "Unauthorized to add claim");
@@ -241,6 +276,9 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
      * @dev Set state recovery contract address
      */
     function setStateRecoveryContract(address _stateRecoveryContract) external onlyRole(ADMIN_ROLE) {
+        require(_stateRecoveryContract != address(0), "Recovery contract cannot be zero address");
+        require(_stateRecoveryContract != address(this), "Cannot set self as recovery contract");
+        require(_stateRecoveryContract.code.length > 0, "Recovery contract must be a contract");
         stateRecoveryContract = _stateRecoveryContract;
     }
     

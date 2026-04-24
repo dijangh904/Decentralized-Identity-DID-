@@ -78,6 +78,14 @@ contract DIDGovernor is
         address newImplementation,
         string memory description
     ) public returns (uint256) {
+        require(proxy != address(0), "Proxy cannot be zero address");
+        require(newImplementation != address(0), "New implementation cannot be zero address");
+        require(proxy != newImplementation, "Proxy and implementation cannot be the same");
+        require(proxy.code.length > 0, "Proxy must be a contract");
+        require(newImplementation.code.length > 0, "New implementation must be a contract");
+        require(bytes(description).length > 0, "Description cannot be empty");
+        require(bytes(description).length <= 1024, "Description too long");
+        
         bytes memory data = abi.encodeWithSignature(
             "upgrade(address,address)",
             proxy,
@@ -134,6 +142,13 @@ contract DIDGovernor is
         bytes memory data,
         string memory description
     ) public returns (uint256) {
+        require(target != address(0), "Target cannot be zero address");
+        require(target.code.length > 0, "Target must be a contract");
+        require(data.length > 0, "Data cannot be empty");
+        require(data.length <= 10240, "Data too large");
+        require(bytes(description).length > 0, "Description cannot be empty");
+        require(bytes(description).length <= 1024, "Description too long");
+        
         address[] memory targets = new address[](1);
         targets[0] = address(timelock());
         
@@ -182,6 +197,13 @@ contract DIDGovernor is
         bytes memory data,
         string memory description
     ) public returns (uint256) {
+        require(target != address(0), "Target cannot be zero address");
+        require(target.code.length > 0, "Target must be a contract");
+        require(data.length > 0, "Data cannot be empty");
+        require(data.length <= 10240, "Data too large");
+        require(bytes(description).length > 0, "Description cannot be empty");
+        require(bytes(description).length <= 1024, "Description too long");
+        
         require(
             hasRole(EMERGENCY_ROLE, msg.sender) || 
             token.getPriorVotes(msg.sender, block.timestamp - 1) > PROPOSAL_THRESHOLD * 10,
