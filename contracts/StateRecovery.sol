@@ -8,73 +8,147 @@ import "./interfaces/IERC735.sol";
 
 /**
  * @title StateRecovery
- * @dev Contract state recovery system with governance controls
- * Provides mechanisms to recover from various types of state corruption
+ * @dev Comprehensive contract state recovery system with governance controls
+ * 
+ * This contract provides mechanisms to recover from various types of state corruption
+ * in DID (Decentralized Identity) registry contracts. It implements a governance-based
+ * approach where recovery operations require proposal creation, voting, and approval
+ * before execution.
+ * 
+ * Key Features:
+ * - Multi-signature approval system for recovery operations
+ * - Emergency recovery capabilities for critical situations
+ * - State snapshot creation for recovery reference
+ * - Comprehensive audit trail and operation logging
+ * - Role-based access control with multiple governance layers
+ * 
+ * Recovery Types Supported:
+ * - DID_DOCUMENT: Recovery of corrupted DID document data
+ * - VERIFIABLE_CREDENTIAL: Recovery of corrupted credential information
+ * - OWNERSHIP_MAPPING: Recovery of inconsistent owner-to-DID relationships
+ * - ROLE_ASSIGNMENT: Recovery of corrupted role-based access control
+ * - CROSS_CHAIN_STATE: Recovery of cross-chain bridge inconsistencies
+ * 
+ * @author Fatima Sanusi
+ * @notice Use this contract to recover from state corruption in DID registry contracts
+ * @dev Implements OpenZeppelin AccessControl and ReentrancyGuard for security
  */
 contract StateRecovery is AccessControl, ReentrancyGuard {
     
-    // Governance roles
+    /// @notice Role identifier for recovery operators who can propose and vote on recovery operations
     bytes32 public constant RECOVERY_ROLE = keccak256("RECOVERY_ROLE");
+    
+    /// @notice Role identifier for governance members who can configure recovery parameters
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    
+    /// @notice Role identifier for emergency responders who can trigger immediate recovery
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
-    // Recovery operation types
+    /// @notice Enumeration of supported recovery operation types
+    /// @dev Each type corresponds to a specific category of state corruption that can be recovered
     enum RecoveryType {
+        /// @notice Recovery of corrupted DID document data (ownership, public keys, service endpoints)
         DID_DOCUMENT,
+        /// @notice Recovery of corrupted verifiable credential information
         VERIFIABLE_CREDENTIAL,
+        /// @notice Recovery of inconsistent owner-to-DID relationship mappings
         OWNERSHIP_MAPPING,
+        /// @notice Recovery of corrupted role-based access control assignments
         ROLE_ASSIGNMENT,
+        /// @notice Recovery of cross-chain bridge state inconsistencies
         CROSS_CHAIN_STATE
     }
     
-    // Recovery operation status
+    /// @notice Enumeration of recovery proposal lifecycle statuses
+    /// @dev Tracks the progression of a recovery proposal through the governance process
     enum RecoveryStatus {
+        /// @notice Proposal has been created and is awaiting votes
         PENDING,
+        /// @notice Proposal has received sufficient approval votes
         APPROVED,
+        /// @notice Proposal has been rejected by sufficient negative votes
         REJECTED,
+        /// @notice Proposal has been successfully executed
         EXECUTED,
+        /// @notice Proposal execution failed
         FAILED
     }
     
+    /// @notice Structure representing a recovery proposal in the governance system
+    /// @dev Contains all proposal data including voting information and execution status
     struct RecoveryProposal {
+        /// @notice Unique identifier for the proposal
         bytes32 id;
+        /// @notice Type of recovery operation being proposed
         RecoveryType recoveryType;
+        /// @notice Address that created the proposal
         address proposer;
+        /// @notice Human-readable description of the recovery operation
         string description;
+        /// @notice Encoded recovery operation data
         bytes data;
+        /// @notice Timestamp when the proposal was created
         uint256 proposedAt;
+        /// @notice Deadline for voting on the proposal
         uint256 votingDeadline;
+        /// @notice Current status of the proposal
         RecoveryStatus status;
+        /// @notice Number of approval votes received
         uint256 approvalCount;
+        /// @notice Number of rejection votes received
         uint256 rejectionCount;
+        /// @notice Mapping of addresses that have voted on the proposal
         mapping(address => bool) hasVoted;
+        /// @notice Array of addresses that have voted on the proposal
         address[] voters;
     }
     
+    /// @notice Structure representing a state snapshot for recovery reference
+    /// @dev Used to create reference points before potentially risky operations
     struct StateSnapshot {
+        /// @notice Unique identifier for the snapshot
         bytes32 id;
+        /// @notice Timestamp when the snapshot was created
         uint256 timestamp;
+        /// @notice Merkle root of the contract state at snapshot time
         bytes32 merkleRoot;
+        /// @notice Description of the snapshot purpose
         string description;
+        /// @notice Address that created the snapshot
         address creator;
+        /// @notice Whether the snapshot is considered valid
         bool isValid;
     }
     
-    // Storage
+    /// @notice Mapping of proposal IDs to their corresponding recovery proposals
     mapping(bytes32 => RecoveryProposal) public recoveryProposals;
+    
+    /// @notice Mapping of recovery types to their required approval counts
     mapping(RecoveryType => uint256) public requiredApprovals;
+    
+    /// @notice Mapping of snapshot IDs to their corresponding state snapshots
     mapping(bytes32 => StateSnapshot) public stateSnapshots;
     
-    // Configuration
+    /// @notice Standard voting period for regular recovery proposals (7 days)
     uint256 public constant VOTING_PERIOD = 7 days;
+    
+    /// @notice Extended voting period for emergency recovery proposals (24 hours)
     uint256 public constant EMERGENCY_VOTING_PERIOD = 24 hours;
+    
+    /// @notice Minimum delay between proposal creation and execution (1 hour)
     uint256 public constant MIN_PROPOSAL_DELAY = 1 hours;
     
-    // Target contracts for recovery
+    /// @notice Address of the Ethereum DID Registry contract for recovery operations
     address public ethereumDIDRegistry;
+    
+    /// @notice Address of the Stellar DID Registry contract for recovery operations
     address public stellarDIDRegistry;
     
-    // Events
+    /// @notice Emitted when a new recovery proposal is created
+    /// @param proposalId Unique identifier of the proposal
+    /// @param recoveryType Type of recovery operation being proposed
+    /// @param proposer Address that created the proposal
+    /// @param description Human-readable description of the recovery operation
     event RecoveryProposed(
         bytes32 indexed proposalId,
         RecoveryType indexed recoveryType,
@@ -82,6 +156,11 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         string description
     );
     
+    /// @notice Emitted when a recovery proposal receives a vote
+    /// @param proposalId Unique identifier of the proposal
+    /// @param voter Address that cast the vote
+    /// @param approve Whether the vote is an approval (true) or rejection (false)
+    /// @param reason Optional reason provided by the voter
     event RecoveryVoted(
         bytes32 indexed proposalId,
         address indexed voter,
@@ -89,6 +168,11 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         string reason
     );
     
+    /// @notice Emitted when a recovery proposal is executed
+    /// @param proposalId Unique identifier of the proposal
+    /// @param recoveryType Type of recovery operation that was executed
+    /// @param success Whether the execution was successful
+    /// @param result Description of the execution result
     event RecoveryExecuted(
         bytes32 indexed proposalId,
         RecoveryType indexed recoveryType,
@@ -96,45 +180,67 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
         string result
     );
     
+    /// @notice Emitted when a new state snapshot is created
+    /// @param snapshotId Unique identifier of the snapshot
+    /// @param creator Address that created the snapshot
+    /// @param merkleRoot Merkle root of the contract state at snapshot time
     event StateSnapshotCreated(
         bytes32 indexed snapshotId,
         address indexed creator,
         bytes32 merkleRoot
     );
     
+    /// @notice Emitted when an emergency recovery is triggered
+    /// @param triggerer Address that triggered the emergency recovery
+    /// @param reason Reason for triggering the emergency recovery
+    /// @param timestamp Timestamp when the emergency recovery was triggered
     event EmergencyRecoveryTriggered(
         address indexed triggerer,
         string reason,
         uint256 timestamp
     );
     
+    /// @notice Restricts access to addresses with the RECOVERY_ROLE
+    /// @dev Throws if the caller does not have the RECOVERY_ROLE
     modifier onlyRecoveryRole() {
         require(hasRole(RECOVERY_ROLE, msg.sender), "StateRecovery: caller missing RECOVERY_ROLE");
         _;
     }
     
+    /// @notice Restricts access to addresses with the GOVERNANCE_ROLE
+    /// @dev Throws if the caller does not have the GOVERNANCE_ROLE
     modifier onlyGovernanceRole() {
         require(hasRole(GOVERNANCE_ROLE, msg.sender), "StateRecovery: caller missing GOVERNANCE_ROLE");
         _;
     }
     
+    /// @notice Restricts access to addresses with the EMERGENCY_ROLE
+    /// @dev Throws if the caller does not have the EMERGENCY_ROLE
     modifier onlyEmergencyRole() {
         require(hasRole(EMERGENCY_ROLE, msg.sender), "StateRecovery: caller missing EMERGENCY_ROLE");
         _;
     }
     
+    /// @notice Validates that a proposal exists
+    /// @param proposalId The ID of the proposal to validate
+    /// @dev Throws if the proposal does not exist
     modifier validProposal(bytes32 proposalId) {
         require(recoveryProposals[proposalId].proposedAt > 0, "StateRecovery: proposal does not exist");
         _;
     }
     
+    /**
+     * @notice Initializes the StateRecovery contract
+     * @dev Sets up the contract with default roles and approval requirements
+     * Grants the deployer all roles for initial setup
+     */
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(GOVERNANCE_ROLE, msg.sender);
         _grantRole(RECOVERY_ROLE, msg.sender);
         _grantRole(EMERGENCY_ROLE, msg.sender);
         
-        // Set default approval requirements
+        // Set default approval requirements for each recovery type
         requiredApprovals[RecoveryType.DID_DOCUMENT] = 3;
         requiredApprovals[RecoveryType.VERIFIABLE_CREDENTIAL] = 3;
         requiredApprovals[RecoveryType.OWNERSHIP_MAPPING] = 5;
@@ -143,7 +249,10 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
     }
     
     /**
-     * @dev Set target contract addresses
+     * @notice Sets the target contract addresses for recovery operations
+     * @dev Only addresses with DEFAULT_ADMIN_ROLE can call this function
+     * @param _ethereumDIDRegistry Address of the Ethereum DID Registry contract
+     * @param _stellarDIDRegistry Address of the Stellar DID Registry contract
      */
     function setTargetContracts(
         address _ethereumDIDRegistry,
@@ -154,12 +263,20 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
     }
     
     /**
-     * @dev Create a state snapshot for recovery reference
+     * @notice Creates a state snapshot for recovery reference
+     * @dev Creates a reference point of contract state before potentially risky operations
+     * @param merkleRoot Merkle root representing the contract state at snapshot time
+     * @param description Human-readable description of the snapshot purpose
+     * @return snapshotId Unique identifier of the created snapshot
+     * @throws StateRecovery if description is empty
+     * @throws StateRecovery if caller does not have RECOVERY_ROLE
      */
     function createStateSnapshot(
         bytes32 merkleRoot,
         string memory description
     ) external onlyRecoveryRole returns (bytes32) {
+        require(bytes(description).length > 0, "StateRecovery: description cannot be empty");
+        
         bytes32 snapshotId = keccak256(abi.encodePacked(
             block.timestamp,
             msg.sender,
@@ -180,7 +297,16 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
     }
     
     /**
-     * @dev Propose a recovery operation
+     * @notice Proposes a new recovery operation for governance approval
+     * @dev Creates a new proposal that must be approved through voting before execution
+     * @param recoveryType Type of recovery operation being proposed
+     * @param description Human-readable description of the recovery operation
+     * @param data Encoded recovery operation data specific to the recovery type
+     * @return proposalId Unique identifier of the created proposal
+     * @throws StateRecovery if description is empty
+     * @throws StateRecovery if recovery data is empty
+     * @throws StateRecovery if proposal already exists
+     * @throws StateRecovery if caller does not have RECOVERY_ROLE
      */
     function proposeRecovery(
         RecoveryType recoveryType,
@@ -217,7 +343,15 @@ contract StateRecovery is AccessControl, ReentrancyGuard {
     }
     
     /**
-     * @dev Vote on a recovery proposal
+     * @notice Votes on a recovery proposal
+     * @dev Allows recovery role members to approve or reject pending proposals
+     * @param proposalId Unique identifier of the proposal to vote on
+     * @param approve Whether the vote is an approval (true) or rejection (false)
+     * @param reason Optional reason provided by the voter
+     * @throws StateRecovery if voting period has ended
+     * @throws StateRecovery if caller has already voted
+     * @throws StateRecovery if proposal is not in PENDING status
+     * @throws StateRecovery if caller does not have RECOVERY_ROLE
      */
     function voteOnRecovery(
         bytes32 proposalId,

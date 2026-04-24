@@ -8,8 +8,38 @@ import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 /**
  * @title UpgradeableStellarDIDRegistry
- * @dev Upgradeable version of the StellarDIDRegistry using UUPS pattern
- * This contract implements the DID registry functionality with upgradeability
+ * @dev Upgradeable DID registry using UUPS proxy pattern with comprehensive functionality
+ * 
+ * This contract provides an upgradeable implementation of the Stellar DID registry,
+ * enabling seamless updates to the contract logic while preserving all state data.
+ * It implements the UUPS (Universal Upgradeable Proxy Standard) pattern for
+ * secure and gas-efficient upgrades.
+ * 
+ * Key Features:
+ * - UUPS upgradeable proxy pattern for secure upgrades
+ * - DID document creation and management
+ * - Verifiable credential issuance and management
+ * - Ownership transfer capabilities
+ * - DID deactivation functionality
+ * - Reentrancy protection for all operations
+ * - Comprehensive event logging
+ * - Storage layout preservation for upgrades
+ * 
+ * Upgradeability:
+ * - Uses UUPS pattern for gas-efficient upgrades
+ * - Storage variables order must be maintained for compatibility
+ * - Upgrade authorization restricted to contract owner
+ * - Implementation upgrade events for transparency
+ * 
+ * Security Features:
+ * - ReentrancyGuard protection on all external functions
+ * - Ownership-based access control
+ * - Input validation for all operations
+ * - Event emission for audit trails
+ * 
+ * @author Fatima Sanusi
+ * @notice Use this contract for upgradeable DID registry functionality
+ * @dev Implements UUPS, Initializable, OwnableUpgradeable, and ReentrancyGuardUpgradeable
  */
 contract UpgradeableStellarDIDRegistry is 
     Initializable, 
@@ -18,38 +48,85 @@ contract UpgradeableStellarDIDRegistry is
     ReentrancyGuardUpgradeable 
 {
     
+    /// @notice Structure representing a DID document with full metadata
+    /// @dev Contains all essential information for a decentralized identity
     struct DIDDocument {
+        /// @notice Unique DID identifier
         string did;
+        /// @notice Owner address of the DID
         address owner;
+        /// @notice Public key associated with the DID
         string publicKey;
+        /// @notice Timestamp when the DID was created
         uint256 created;
+        /// @notice Timestamp of the last update
         uint256 updated;
+        /// @notice Whether the DID is currently active
         bool active;
+        /// @notice Service endpoint for DID operations
         string serviceEndpoint;
     }
     
+    /// @notice Structure representing a verifiable credential
+    /// @dev Contains all credential information according to W3C standards
     struct VerifiableCredential {
+        /// @notice Unique identifier for the credential
         bytes32 id;
+        /// @notice Issuer of the credential
         string issuer;
+        /// @notice Subject of the credential
         string subject;
+        /// @notice Type of credential
         string credentialType;
+        /// @notice Timestamp when the credential was issued
         uint256 issued;
+        /// @notice Expiration timestamp (0 for no expiration)
         uint256 expires;
+        /// @notice Hash of the credential data
         bytes32 dataHash;
+        /// @notice Whether the credential has been revoked
         bool revoked;
     }
     
-    // Storage variables - order must be maintained for upgrades
+    /// @notice Mapping of DID strings to their corresponding documents
+    /// @dev Storage order must be maintained for upgrade compatibility
     mapping(string => DIDDocument) public didDocuments;
+    
+    /// @notice Mapping of credential IDs to their corresponding credentials
+    /// @dev Storage order must be maintained for upgrade compatibility
     mapping(bytes32 => VerifiableCredential) public credentials;
+    
+    /// @notice Mapping of owner addresses to their associated DIDs
+    /// @dev Storage order must be maintained for upgrade compatibility
     mapping(address => string[]) public ownerToDids;
     
-    // Events
+    /// @notice Emitted when a new DID document is created
+    /// @param did The DID identifier
+    /// @param owner Owner address of the DID
+    /// @param publicKey Public key associated with the DID
     event DIDCreated(string indexed did, address indexed owner, string publicKey);
+    
+    /// @notice Emitted when a DID document is updated
+    /// @param did The DID identifier
+    /// @param updated Timestamp of the update
     event DIDUpdated(string indexed did, uint256 updated);
+    
+    /// @notice Emitted when a DID is deactivated
+    /// @param did The DID identifier
     event DIDDeactivated(string indexed did);
+    
+    /// @notice Emitted when a new credential is issued
+    /// @param id Unique identifier of the credential
+    /// @param issuer Issuer of the credential
+    /// @param subject Subject of the credential
     event CredentialIssued(bytes32 indexed id, string issuer, string subject);
+    
+    /// @notice Emitted when a credential is revoked
+    /// @param id Unique identifier of the credential
     event CredentialRevoked(bytes32 indexed id);
+    
+    /// @notice Emitted when the contract implementation is upgraded
+    /// @param newImplementation Address of the new implementation contract
     event ImplementationUpgraded(address indexed newImplementation);
     
     /// @custom:oz-upgrades-unsafe-allow constructor

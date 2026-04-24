@@ -6,48 +6,104 @@ import "../interfaces/IERC735.sol";
 
 /**
  * @title EthereumDIDRegistry
- * @dev Smart contract interface for DID operations on Ethereum and EVM-compatible chains.
- * Acts as the cross-chain bridge counterpart for Stellar DID registry.
- * Implements ERC-725 and ERC-735 standards for identity and claim management.
+ * @dev Comprehensive DID registry for Ethereum and EVM-compatible chains with cross-chain bridge support
+ * 
+ * This contract serves as the Ethereum counterpart to the Stellar DID registry, enabling
+ * seamless cross-chain decentralized identity management. It implements both ERC-725
+ * (Identity) and ERC-735 (Claims) standards to provide a complete DID solution.
+ * 
+ * Key Features:
+ * - DID document creation and management
+ * - Verifiable credential issuance and management
+ * - Cross-chain bridging capabilities
+ * - Role-based access control system
+ * - State recovery mechanisms for corruption scenarios
+ * - ERC-725/735 standard compliance
+ * - Claim management with topic-based organization
+ * - Service endpoint management
+ * 
+ * Cross-Chain Functionality:
+ * - bridgeDID: Bridge Stellar DIDs to Ethereum
+ * - bridgeCredential: Bridge credentials across chains
+ * - Maintains consistency with Stellar registry
+ * 
+ * Recovery Features:
+ * - State recovery integration
+ * - Emergency recovery mode
+ * - Corruption detection and repair
+ * 
+ * @author Fatima Sanusi
+ * @notice Use this contract to manage DIDs and credentials on Ethereum with cross-chain support
+ * @dev Implements ERC-725 and ERC-735 standards with additional recovery mechanisms
  */
 contract EthereumDIDRegistry is IERC725, IERC735 {
     using SafeMath for uint256;
     
-    // Role-based access control
+    /// @notice Role for administrators who can manage the registry
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    
+    /// @notice Role for credential issuers who can issue and manage credentials
     bytes32 public constant ISSUER_ROLE = keccak256("ISSUER_ROLE");
+    
+    /// @notice Role for recovery operations during state corruption scenarios
     bytes32 public constant RECOVERY_ROLE = keccak256("RECOVERY_ROLE");
     
     mapping(bytes32 => mapping(address => bool)) private _roles;
     address private _admin;
     
-    // State recovery contract
+    /// @notice Address of the state recovery contract for corruption scenarios
     address public stateRecoveryContract;
+    
+    /// @notice Whether the contract is currently in recovery mode
     bool public recoveryMode;
     
+    /// @notice Structure representing a DID document
+    /// @dev Contains all essential information for a decentralized identity
     struct DIDDocument {
+        /// @notice Unique DID identifier
         string did;
+        /// @notice Owner address of the DID
         address owner;
+        /// @notice Public key associated with the DID
         string publicKey;
+        /// @notice Timestamp when the DID was created
         uint256 created;
+        /// @notice Timestamp of the last update
         uint256 updated;
+        /// @notice Whether the DID is currently active
         bool active;
+        /// @notice Service endpoint for DID operations
         string serviceEndpoint;
     }
     
+    /// @notice Structure representing a verifiable credential
+    /// @dev Contains all credential information according to W3C standards
     struct VerifiableCredential {
+        /// @notice Unique identifier for the credential
         bytes32 id;
+        /// @notice Issuer of the credential
         string issuer;
+        /// @notice Subject of the credential
         string subject;
+        /// @notice Type of credential
         string credentialType;
+        /// @notice Timestamp when the credential was issued
         uint256 issued;
+        /// @notice Expiration timestamp (0 for no expiration)
         uint256 expires;
+        /// @notice Hash of the credential data
         bytes32 dataHash;
+        /// @notice Whether the credential has been revoked
         bool revoked;
     }
     
+    /// @notice Mapping of DID strings to their corresponding documents
     mapping(string => DIDDocument) public didDocuments;
+    
+    /// @notice Mapping of credential IDs to their corresponding credentials
     mapping(bytes32 => VerifiableCredential) public credentials;
+    
+    /// @notice Mapping of owner addresses to their associated DIDs
     mapping(address => string[]) public ownerToDids;
     
     // ERC725/735 Storage mapped by DID
@@ -55,46 +111,90 @@ contract EthereumDIDRegistry is IERC725, IERC735 {
     mapping(string => mapping(bytes32 => IERC735.Claim)) private _didClaims;
     mapping(string => mapping(uint256 => bytes32[])) private _didClaimsByTopic;
     
+    /// @notice Emitted when a DID is bridged from Stellar to Ethereum
+    /// @param did The DID identifier
+    /// @param owner Owner address of the DID
+    /// @param publicKey Public key associated with the DID
     event DIDBridged(string indexed did, address indexed owner, string publicKey);
+    
+    /// @notice Emitted when a DID document is updated
+    /// @param did The DID identifier
+    /// @param updated Timestamp of the update
     event DIDUpdated(string indexed did, uint256 updated);
+    
+    /// @notice Emitted when a credential is bridged across chains
+    /// @param id Unique identifier of the credential
+    /// @param issuer Issuer of the credential
+    /// @param subject Subject of the credential
     event CredentialBridged(bytes32 indexed id, string issuer, string subject);
     
+    /// @notice Restricts access to addresses with the specified role
+    /// @param role The role required to execute the function
+    /// @dev Throws if the caller does not have the required role
     modifier onlyRole(bytes32 role) {
         require(_roles[role][msg.sender], "AccessControl: caller missing role");
         _;
     }
     
+    /// @notice Restricts access to the owner of a specific DID
+    /// @param did The DID identifier to check ownership for
+    /// @dev Throws if the caller is not the owner of the specified DID
     modifier onlyOwner(string memory did) {
         require(didDocuments[did].owner == msg.sender, "Only DID owner can perform this action");
         _;
     }
     
+    /// @notice Restricts access to the state recovery contract
+    /// @dev Throws if the caller is not the state recovery contract
     modifier onlyRecoveryContract() {
         require(msg.sender == stateRecoveryContract, "Only recovery contract can call this function");
         _;
     }
     
+    /// @notice Restricts access when the contract is not in recovery mode
+    /// @dev Throws if the contract is in recovery mode
     modifier whenNotInRecoveryMode() {
         require(!recoveryMode, "Contract is in recovery mode");
         _;
     }
     
+    /// @notice Restricts access when the contract is in recovery mode
+    /// @dev Throws if the contract is not in recovery mode
     modifier whenInRecoveryMode() {
         require(recoveryMode, "Contract is not in recovery mode");
         _;
     }
     
+    /**
+     * @notice Initializes the EthereumDIDRegistry contract
+     * @dev Sets the deployer as the initial admin and grants them the admin role
+     */
     constructor() {
         _admin = msg.sender;
         _roles[ADMIN_ROLE][msg.sender] = true;
     }
 
+    /**
+     * @notice Grants a role to a specified account
+     * @dev Only addresses with ADMIN_ROLE can grant roles to other accounts
+     * @param role The role to grant
+     * @param account The address to grant the role to
+     * @throws AccessControl if caller does not have ADMIN_ROLE
+     */
     function grantRole(bytes32 role, address account) external onlyRole(ADMIN_ROLE) {
         _roles[role][account] = true;
     }
     
     /**
-     * @dev Bridge a Stellar DID to Ethereum
+     * @notice Bridges a Stellar DID to the Ethereum chain
+     * @dev Creates a new DID document on Ethereum based on a Stellar DID
+     * @param did The DID identifier to bridge
+     * @param ownerAddress Owner address for the DID on Ethereum
+     * @param publicKey Public key associated with the DID
+     * @param serviceEndpoint Service endpoint for DID operations
+     * @return success Whether the bridging operation was successful
+     * @throws EthereumDIDRegistry if DID already exists on this chain
+     * @throws AccessControl if caller does not have ADMIN_ROLE
      */
     function bridgeDID(
         string memory did,
