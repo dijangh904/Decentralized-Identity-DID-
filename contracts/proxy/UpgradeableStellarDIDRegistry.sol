@@ -19,24 +19,23 @@ contract UpgradeableStellarDIDRegistry is
 {
     
     struct DIDDocument {
-        string did;
         address owner;
-        string publicKey;
         uint256 created;
         uint256 updated;
         bool active;
+        string publicKey;
         string serviceEndpoint;
     }
     
     struct VerifiableCredential {
         bytes32 id;
+        uint256 issued;
+        uint256 expires;
+        bool revoked;
         string issuer;
         string subject;
         string credentialType;
-        uint256 issued;
-        uint256 expires;
         bytes32 dataHash;
-        bool revoked;
     }
     
     // Storage variables - order must be maintained for upgrades
@@ -87,17 +86,16 @@ contract UpgradeableStellarDIDRegistry is
         string memory publicKey,
         string memory serviceEndpoint
     ) external nonReentrant returns (bool) {
-        require(bytes(didDocuments[did].did).length == 0, "DID already exists");
+        require(didDocuments[did].owner == address(0), "DID already exists");
         require(bytes(did).length > 0, "DID cannot be empty");
         require(bytes(publicKey).length > 0, "Public key cannot be empty");
         
         didDocuments[did] = DIDDocument({
-            did: did,
             owner: msg.sender,
-            publicKey: publicKey,
             created: block.timestamp,
             updated: block.timestamp,
             active: true,
+            publicKey: publicKey,
             serviceEndpoint: serviceEndpoint
         });
         
