@@ -10,6 +10,7 @@ dotenv.config();
 const didRoutes = require('./routes/did');
 const credentialRoutes = require('./routes/credentials');
 const batchRoutes = require('./routes/batch');
+const sharingRoutes = require('./routes/credentialSharing');
 
 // Initialize Express app
 const app = express();
@@ -34,6 +35,7 @@ if (process.env.STELLAR_NETWORK === 'PUBLIC') {
 app.use('/api/did', didRoutes);
 app.use('/api/credentials', credentialRoutes);
 app.use('/api/batch', batchRoutes);
+app.use('/api/sharing', sharingRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -55,6 +57,7 @@ app.get('/', (req, res) => {
       did: '/api/did',
       credentials: '/api/credentials',
       batch: '/api/batch',
+      sharing: '/api/sharing',
       health: '/health'
     }
   });
