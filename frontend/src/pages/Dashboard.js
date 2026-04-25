@@ -175,7 +175,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <Box component="main" aria-label="Dashboard">
+      <Box component="main" aria-label="Dashboard" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
         <Typography variant="h4" gutterBottom>
           Dashboard
         </Typography>
@@ -185,11 +185,11 @@ const Dashboard = () => {
   }
 
   return (
-    <Box component="main" aria-label="Stellar DID Platform Dashboard">
-      <Typography variant="h4" gutterBottom fontWeight="bold">
+    <Box component="main" aria-label="Stellar DID Platform Dashboard" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
         Stellar DID Platform Dashboard
       </Typography>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+      <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1} mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="caption" color="text.secondary">
             Last Refreshed: {stats?.lastRefreshed || 'Never'}
@@ -443,6 +443,17 @@ const Dashboard = () => {
                       aria-label="Navigate to Account Info page"
                     >
                       Account Info
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      href="/verify-credential"
+                      startIcon={<Security aria-hidden="true" />}
+                      aria-label="Navigate to Verify Credential page"
+                    >
+                      Verify Credential
                     </Button>
                   </Grid>
                 </Grid>
