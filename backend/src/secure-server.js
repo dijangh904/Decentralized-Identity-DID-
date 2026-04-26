@@ -63,7 +63,7 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('/api/v1', require('./routes'));
+app.use('/api', require('./routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

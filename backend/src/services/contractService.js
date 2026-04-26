@@ -18,7 +18,9 @@ try {
 }
 
 const StellarSDK = require('stellar-sdk');
-const logger = require('../utils/logger');
+const logger = require('../middleware').logger;
+const stellarConnection = require('../utils/stellarConnection');
+const { createBreaker } = require('../utils/circuitBreaker');
 
 // Custom error classes for better error handling
 class ContractAddressNotSetError extends Error {
@@ -78,6 +80,18 @@ class ContractService {
     if (this.contractAddress) {
       this.contract.contractAddress = this.contractAddress;
     }
+
+    // Initialize breakers
+    this.deployBreaker = createBreaker(this.contract.deploy.bind(this.contract));
+    this.registerDIDBreaker = createBreaker(this.contract.registerDID.bind(this.contract));
+    this.updateDIDBreaker = createBreaker(this.contract.updateDID.bind(this.contract));
+    this.issueCredentialBreaker = createBreaker(this.contract.issueCredential.bind(this.contract));
+    this.revokeCredentialBreaker = createBreaker(this.contract.revokeCredential.bind(this.contract));
+    this.getDIDBreaker = createBreaker(this.contract.getDID.bind(this.contract));
+    this.getCredentialBreaker = createBreaker(this.contract.getCredential.bind(this.contract));
+    this.getOwnerDIDsBreaker = createBreaker(this.contract.getOwnerDIDs.bind(this.contract));
+    this.verifyCredentialBreaker = createBreaker(this.contract.verifyCredential.bind(this.contract));
+    this.loadAccountBreaker = createBreaker(stellarConnection.loadAccount.bind(stellarConnection));
   }
 
   /**
@@ -87,7 +101,7 @@ class ContractService {
     try {
       logger.info('Deploying DID registry contract...');
       
-      const result = await this.contract.deploy(deployerSecret);
+      const result = await this.deployBreaker.fire(deployerSecret);
       
       logger.info('Contract deployed successfully', {
         contractAddress: result.contractAddress,
@@ -112,7 +126,7 @@ class ContractService {
         throw new ContractAddressNotSetError();
       }
 
-      const result = await this.contract.registerDID(
+      const result = await this.registerDIDBreaker.fire(
         did,
         publicKey,
         serviceEndpoint,
@@ -138,7 +152,7 @@ class ContractService {
     try {
       logger.info('Updating DID on contract', { did });
       
-      const result = await this.contract.updateDID(did, updates, signerSecret);
+      const result = await this.updateDIDBreaker.fire(did, updates, signerSecret);
       
       logger.info('DID updated successfully', {
         did,
@@ -163,7 +177,7 @@ class ContractService {
         credentialType
       });
       
-      const result = await this.contract.issueCredential(
+      const result = await this.issueCredentialBreaker.fire(
         issuerDID,
         subjectDID,
         credentialType,
@@ -190,7 +204,7 @@ class ContractService {
     try {
       logger.info('Revoking credential on contract', { credentialId });
       
-      const result = await this.contract.revokeCredential(credentialId, signerSecret);
+      const result = await this.revokeCredentialBreaker.fire(credentialId, signerSecret);
       
       logger.info('Credential revoked successfully', {
         credentialId,
@@ -209,7 +223,7 @@ class ContractService {
    */
   async getDID(did) {
     try {
-      const didDocument = await this.contract.getDID(did);
+      const didDocument = await this.getDIDBreaker.fire(did);
       
       if (didDocument) {
         logger.debug('DID retrieved from blockchain', { did });
@@ -229,7 +243,7 @@ class ContractService {
    */
   async getCredential(credentialId) {
     try {
-      const credential = await this.contract.getCredential(credentialId);
+      const credential = await this.getCredentialBreaker.fire(credentialId);
       
       if (credential) {
         logger.debug('Credential retrieved from blockchain', { credentialId });
@@ -249,7 +263,7 @@ class ContractService {
    */
   async getOwnerDIDs(ownerPublicKey) {
     try {
-      const dids = await this.contract.getOwnerDIDs(ownerPublicKey);
+      const dids = await this.getOwnerDIDsBreaker.fire(ownerPublicKey);
       
       logger.debug('Retrieved owner DIDs', {
         ownerPublicKey,
@@ -268,7 +282,7 @@ class ContractService {
    */
   async verifyCredential(credentialId) {
     try {
-      const verification = await this.contract.verifyCredential(credentialId);
+      const verification = await this.verifyCredentialBreaker.fire(credentialId);
       
       logger.info('Credential verification completed', {
         credentialId,
@@ -349,7 +363,7 @@ class ContractService {
         process.env.STELLAR_HORIZON_URL || 'https://horizon-testnet.stellar.org'
       );
       
-      const account = await server.loadAccount(publicKey);
+      const account = await this.loadAccountBreaker.fire(publicKey);
       
       logger.debug('Account information retrieved', { publicKey });
       
