@@ -42,6 +42,8 @@ import { toast } from 'react-toastify';
 import { stellarAPI } from '../services/api';
 import { handleApiError } from '../utils/errorHandler';
 import ErrorDisplay from './ErrorDisplay';
+import { CredentialListSkeleton } from './SkeletonLoader';
+import AdvancedSearch from './AdvancedSearch';
 
 // Virtual scrolling implementation
 const useVirtualScroll = (items, itemHeight, containerHeight) => {
@@ -185,17 +187,25 @@ const CredentialList = ({ onCredentialSelect }) => {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
-  const [filters, setFilters] = useState({
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'virtual'
+  
+  // Advanced search state
+  const [searchParams, setSearchParams] = useState({
+    query: '',
+    credentialType: '',
     issuer: '',
     subject: '',
-    credentialType: '',
-    revoked: '',
-    expired: ''
+    status: '',
+    issuedAfter: null,
+    issuedBefore: null,
+    expiresAfter: null,
+    expiresBefore: null,
+    sortBy: 'issued',
+    sortOrder: 'desc',
+    includeRevoked: false,
+    includeExpired: false,
+    searchIn: ['id', 'issuer', 'subject', 'claims']
   });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'virtual'
-  const [sortBy, setSortBy] = useState('issued');
-  const [sortOrder, setSortOrder] = useState('desc');
   
   // Virtual scrolling refs
   const containerRef = useRef(null);
@@ -219,16 +229,10 @@ const CredentialList = ({ onCredentialSelect }) => {
       const params = {
         limit: rowsPerPage,
         offset: (currentPage - 1) * rowsPerPage,
-        sortBy,
-        sortOrder,
         ...Object.fromEntries(
-          Object.entries(filters).filter(([_, value]) => value !== '')
+          Object.entries(searchParams).filter(([_, value]) => value !== '' && value !== null)
         )
       };
-
-      if (searchQuery) {
-        params.search = searchQuery;
-      }
 
       const response = await stellarAPI.credentials.getCredentials(params);
       setCredentials(response.data.credentials || []);
@@ -244,22 +248,22 @@ const CredentialList = ({ onCredentialSelect }) => {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, filters, searchQuery, sortBy, sortOrder]);
+  }, [page, rowsPerPage, searchParams]);
 
   // Initial fetch and effect dependencies
   useEffect(() => {
     fetchCredentials();
   }, [fetchCredentials]);
 
-  // Handle filter changes
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
+  // Handle search parameters change
+  const handleSearchParamsChange = (newParams) => {
+    setSearchParams(newParams);
     setPage(1);
   };
 
   // Handle search
-  const handleSearch = (event) => {
-    setSearchQuery(event.target.value);
+  const handleSearch = (params) => {
+    setSearchParams(params);
     setPage(1);
   };
 
@@ -271,17 +275,6 @@ const CredentialList = ({ onCredentialSelect }) => {
   // Handle rows per page change
   const handleRowsPerPageChange = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(1);
-  };
-
-  // Handle sort change
-  const handleSortChange = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
     setPage(1);
   };
 
@@ -354,100 +347,16 @@ const CredentialList = ({ onCredentialSelect }) => {
         <ErrorDisplay error={error} onClose={() => setError(null)} />
       )}
 
-      {/* Filters and Search */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box display="flex" alignItems="center" mb={2}>
-            <FilterList sx={{ mr: 1 }} />
-            <Typography variant="h6">Filters</Typography>
-            <Box ml="auto">
-              <Button size="small" onClick={clearFilters}>
-                Clear All
-              </Button>
-            </Box>
-          </Box>
-
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Search"
-                value={searchQuery}
-                onChange={handleSearch}
-                placeholder="Search by ID, issuer, or subject..."
-                InputProps={{
-                  startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
-                <Select
-                  value={filters.credentialType}
-                  label="Type"
-                  onChange={(e) => handleFilterChange('credentialType', e.target.value)}
-                >
-                  <MenuItem value="">All Types</MenuItem>
-                  <MenuItem value="university-degree">University Degree</MenuItem>
-                  <MenuItem value="professional-license">Professional License</MenuItem>
-                  <MenuItem value="age-verification">Age Verification</MenuItem>
-                  <MenuItem value="employment-verification">Employment Verification</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={filters.revoked}
-                  label="Status"
-                  onChange={(e) => handleFilterChange('revoked', e.target.value)}
-                >
-                  <MenuItem value="">All Status</MenuItem>
-                  <MenuItem value="false">Valid</MenuItem>
-                  <MenuItem value="true">Revoked</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Expiration</InputLabel>
-                <Select
-                  value={filters.expired}
-                  label="Expiration"
-                  onChange={(e) => handleFilterChange('expired', e.target.value)}
-                >
-                  <MenuItem value="">All</MenuItem>
-                  <MenuItem value="false">Not Expired</MenuItem>
-                  <MenuItem value="true">Expired</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Sort By</InputLabel>
-                <Select
-                  value={sortBy}
-                  label="Sort By"
-                  onChange={(e) => handleSortChange(e.target.value)}
-                >
-                  <MenuItem value="issued">Issued Date</MenuItem>
-                  <MenuItem value="expires">Expiration Date</MenuItem>
-                  <MenuItem value="credentialType">Type</MenuItem>
-                  <MenuItem value="issuer">Issuer</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      {/* Advanced Search Component */}
+      <AdvancedSearch
+        onSearch={handleSearch}
+        onFiltersChange={handleSearchParamsChange}
+        loading={loading}
+      />
 
       {/* Loading State */}
-      {loading && credentials.length === 0 && (
-        <Box display="flex" justifyContent="center" p={4}>
-          <CircularProgress />
-        </Box>
+      {loading && (
+        <CredentialListSkeleton />
       )}
 
       {/* Empty State */}

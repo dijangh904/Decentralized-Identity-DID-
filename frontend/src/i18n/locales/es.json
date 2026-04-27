@@ -1,0 +1,128 @@
+{
+  "navigation": {
+    "dashboard": "Panel",
+    "credentials": "Credenciales",
+    "createDid": "Crear DID",
+    "resolveDid": "Resolver DID",
+    "connectWallet": "Conectar Billetera",
+    "account": "Cuenta",
+    "scanner": "Escáner",
+    "contracts": "Contratos"
+  },
+  "dashboard": {
+    "title": "Panel de Plataforma DID Stellar",
+    "subtitle": "Descripción general de tu ecosistema de identidad descentralizada",
+    "stats": {
+      "totalDids": "Total de DIDs",
+      "totalCredentials": "Total de Credenciales",
+      "activeUsers": "Usuarios Activos",
+      "network": "Red",
+      "contractAddress": "Dirección del Contrato",
+      "contractVersion": "Versión del Contrato",
+      "uptime": "Tiempo de Actividad",
+      "avgResponseTime": "Tiempo de Respuesta Promedio",
+      "lastRefreshed": "Última Actualización",
+      "mockData": "Datos de Prueba"
+    },
+    "recentActivity": "Actividad Reciente",
+    "networkStats": "Estadísticas de Red"
+  },
+  "credentials": {
+    "title": "Credenciales Verificables",
+    "subtitle": "Gestiona, emite y verifica credenciales verificables en la blockchain de Stellar",
+    "browseCredentials": "Explorar Credenciales",
+    "issueVerify": "Emitir y Verificar",
+    "total": "Credenciales",
+    "refresh": "Actualizar",
+    "listView": "Vista de Lista",
+    "virtualScroll": "Desplazamiento Virtual",
+    "filters": "Filtros",
+    "clearAll": "Limpiar Todo",
+    "search": "Buscar",
+    "searchPlaceholder": "Buscar por ID, emisor o sujeto...",
+    "type": "Tipo",
+    "status": "Estado",
+    "expiration": "Vencimiento",
+    "sortBy": "Ordenar Por",
+    "allTypes": "Todos los Tipos",
+    "allStatus": "Todos los Estados",
+    "valid": "Válido",
+    "revoked": "Revocado",
+    "notExpired": "No Vencido",
+    "expired": "Vencido",
+    "issuedDate": "Fecha de Emisión",
+    "expirationDate": "Fecha de Vencimiento",
+    "issuer": "Emisor",
+    "subject": "Sujeto",
+    "issued": "Emitido",
+    "expires": "Vence",
+    "noCredentialsFound": "No se encontraron credenciales que coincidan con tus criterios.",
+    "rowsPerPage": "Filas por página",
+    "showing": "Mostrando",
+    "of": "de",
+    "virtualScrollingEnabled": "Desplazamiento virtual habilitado para rendimiento óptimo",
+    "switchToListView": "Cambiar a Vista de Lista"
+  },
+  "credentialManager": {
+    "issueCredential": "Emitir Credencial",
+    "verifyCredential": "Verificar Credencial",
+    "credentialTemplates": "Plantillas de Credencial",
+    "templateClickToUse": "Haz clic para usar una plantilla:",
+    "issuerDid": "DID del Emisor",
+    "subjectDid": "DID del Sujeto",
+    "credentialType": "Tipo de Credencial",
+    "claims": "Reclamaciones",
+    "claimsPlaceholder": "{\"degree\": \"Licenciatura\", \"university\": \"Universidad Ejemplo\"}",
+    "issueCredentialBtn": "Emitir Credencial",
+    "verifyCredentialBtn": "Verificar Credencial",
+    "credentialId": "ID de Credencial",
+    "credentialIdPlaceholder": "Ingresa el ID de credencial para verificar",
+    "scanQrCode": "Escanear Código QR",
+    "credentialIssued": "Credencial Emitida",
+    "verificationResult": "Resultado de Verificación",
+    "copyCredentialId": "Copiar ID de Credencial",
+    "credentialIdCopied": "¡ID de credencial copiado al portapapeles!"
+  },
+  "forms": {
+    "required": "Este campo es requerido",
+    "invalidDidFormat": "Formato DID inválido",
+    "invalidJson": "Formato JSON inválido"
+  },
+  "types": {
+    "universityDegree": "Título Universitario",
+    "professionalLicense": "Licencia Profesional",
+    "ageVerification": "Verificación de Edad",
+    "employmentVerification": "Verificación de Empleo"
+  },
+  "status": {
+    "valid": "Válido",
+    "revoked": "Revocado",
+    "expired": "Vencido"
+  },
+  "actions": {
+    "viewDetails": "Ver Detalles",
+    "copyId": "Copiar ID",
+    "refresh": "Actualizar",
+    "clear": "Limpiar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "issue": "Emitir",
+    "verify": "Verificar",
+    "scan": "Escanear"
+  },
+  "messages": {
+    "credentialIssuedSuccess": "¡Credencial emitida exitosamente!",
+    "credentialVerifiedSuccess": "¡Credencial verificada exitosamente!",
+    "credentialIdCopied": "¡ID de credencial copiado al portapapeles!",
+    "errorOccurred": "Ocurrió un error",
+    "loading": "Cargando...",
+    "noDataAvailable": "No hay datos disponibles"
+  },
+  "errors": {
+    "networkError": "Error de red. Por favor intenta de nuevo.",
+    "validationError": "Error de validación. Por favor verifica tu entrada.",
+    "notFound": "Recurso no encontrado.",
+    "unauthorized": "Acceso no autorizado.",
+    "serverError": "Error del servidor. Por favor intenta más tarde."
+  }
+}

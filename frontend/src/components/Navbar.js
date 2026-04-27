@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   AppBar,
   Box,
@@ -28,82 +29,50 @@ import {
 } from "@mui/icons-material";
 import { useWallet } from "../contexts/WalletContext";
 import { useThemeMode } from "../contexts/ThemeContext";
-
-const navItems = [
-  { label: "Dashboard", to: "/" },
-  { label: "Credentials", to: "/credentials" },
-  { label: "Create DID", to: "/create-did" },
-  { label: "Resolve DID", to: "/resolve-did" },
-  { label: "Verify", to: "/verify-credential" },
-  { label: "QR Tools", to: "/scanner" },
-  { label: "Account", to: "/account" },
-];
+import LanguageSelector from "./LanguageSelector";
 
 const DRAWER_WIDTH = 260;
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const { wallet, isConnected } = useWallet();
   const { mode, toggleTheme } = useThemeMode();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
+  const navItems = [
+    { label: t("navigation.dashboard"), to: "/" },
+    { label: t("navigation.credentials"), to: "/credentials" },
+    { label: t("navigation.createDid"), to: "/create-did" },
+    { label: t("navigation.resolveDid"), to: "/resolve-did" },
+    { label: "Verify", to: "/verify-credential" },
+    { label: t("navigation.scanner"), to: "/scanner" },
+    { label: t("navigation.account"), to: "/account" },
+  ];
+
+  const handleDrawerToggle = () => {
+    setDrawerOpen(!drawerOpen);
+  };
 
   const drawerContent = (
-    <Box
-      sx={{ width: DRAWER_WIDTH, pt: 2 }}
-      role="presentation"
-      onClick={() => setDrawerOpen(false)}
-    >
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ px: 2, pb: 2 }}>
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: "10px",
-            display: "grid",
-            placeItems: "center",
-            background:
-              "linear-gradient(135deg, rgba(90,209,230,0.9), rgba(255,184,77,0.9))",
-            color: "#081117",
-          }}
-        >
-          <QrCodeScanner fontSize="small" />
-        </Box>
-        <Typography variant="subtitle1" fontWeight="bold">
-          Stellar DID
-        </Typography>
-      </Stack>
-
+    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
+      <Typography variant="h6" sx={{ my: 2 }}>
+        Stellar DID Platform
+      </Typography>
       <Divider />
-
       <List>
         {navItems.map((item) => (
           <ListItem key={item.to} disablePadding>
-            <ListItemButton
-              component={NavLink}
-              to={item.to}
-              sx={{
-                borderRadius: 1,
-                mx: 1,
-                my: 0.25,
-                "&.active": {
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
-                  "& .MuiListItemText-primary": { fontWeight: "bold" },
-                },
-              }}
-            >
+            <ListItemButton sx={{ textAlign: 'center' }} component={NavLink} to={item.to}>
               <ListItemText primary={item.label} />
             </ListItemButton>
           </ListItem>
         ))}
       </List>
-
-      <Divider sx={{ mt: 1, mb: 2 }} />
-
-      <Box sx={{ px: 2 }}>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <LanguageSelector />
         <Chip
           icon={<AccountBalanceWallet />}
           color={isConnected ? "success" : "default"}
@@ -114,7 +83,7 @@ const Navbar = () => {
           }
           variant={isConnected ? "filled" : "outlined"}
           size="small"
-          sx={{ width: "100%" }}
+          sx={{ mt: 1 }}
         />
       </Box>
     </Box>
@@ -127,41 +96,43 @@ const Navbar = () => {
         color="transparent"
         sx={{
           backdropFilter: "blur(18px)",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          backgroundColor:
-            mode === "dark"
-              ? "rgba(9, 19, 26, 0.88)"
-              : "rgba(255,255,255,0.82)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          backgroundColor: "rgba(9, 19, 26, 0.78)",
         }}
       >
-        <Toolbar sx={{ gap: 1, justifyContent: "space-between" }}>
-          {/* Brand */}
-          <Stack direction="row" spacing={1} alignItems="center">
+        <Toolbar
+          sx={{
+            gap: 2,
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            py: 1,
+          }}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
             {isMobile && (
               <IconButton
                 color="inherit"
-                aria-label="Open navigation menu"
+                aria-label="open drawer"
                 edge="start"
                 onClick={handleDrawerToggle}
+                sx={{ mr: 2 }}
               >
                 <MenuIcon />
               </IconButton>
             )}
             <Box
               sx={{
-                width: 38,
-                height: 38,
-                borderRadius: "12px",
+                width: 42,
+                height: 42,
+                borderRadius: "14px",
                 display: "grid",
                 placeItems: "center",
                 background:
                   "linear-gradient(135deg, rgba(90,209,230,0.9), rgba(255,184,77,0.9))",
                 color: "#081117",
-                flexShrink: 0,
               }}
             >
-              <QrCodeScanner fontSize="small" />
+              <QrCodeScanner />
             </Box>
             <Box sx={{ display: { xs: "none", sm: "block" } }}>
               <Typography variant="h6" noWrap>
@@ -202,6 +173,8 @@ const Navbar = () => {
 
           {/* Right actions */}
           <Stack direction="row" spacing={1} alignItems="center">
+            <LanguageSelector />
+            
             <Tooltip
               title={`Switch to ${mode === "light" ? "dark" : "light"} mode`}
             >

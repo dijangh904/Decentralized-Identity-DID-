@@ -46,6 +46,7 @@ import { useWallet } from "../hooks/useWallet";
 import { handleApiError } from "../utils/errorHandler";
 import ErrorDisplay from "./ErrorDisplay";
 import QRScanner from "./QRScanner";
+import { FormSkeleton } from "./SkeletonLoader";
 
 const issueSchema = yup.object().shape({
   issuerDID: yup
@@ -325,13 +326,7 @@ const CredentialManager = () => {
                       variant="contained"
                       size="large"
                       disabled={loading || !isConnected}
-                      startIcon={
-                        loading ? (
-                          <CircularProgress size={20} />
-                        ) : (
-                          <VerifiedUser />
-                        )
-                      }
+                      startIcon={<VerifiedUser />}
                       sx={{ mt: 3 }}
                     >
                       Issue Credential
@@ -356,9 +351,7 @@ const CredentialManager = () => {
                   </Typography>
 
                   {templatesLoading ? (
-                    <Box display="flex" justifyContent="center" p={3}>
-                      <CircularProgress size={30} />
-                    </Box>
+                    <FormSkeleton />
                   ) : (
                     templates.map((template) => (
                       <Paper
@@ -441,9 +434,7 @@ const CredentialManager = () => {
                     variant="contained"
                     size="large"
                     disabled={loading}
-                    startIcon={
-                      loading ? <CircularProgress size={20} /> : <CheckCircle />
-                    }
+                    startIcon={<CheckCircle />}
                     sx={{ mt: 2 }}
                   >
                     Verify Credential

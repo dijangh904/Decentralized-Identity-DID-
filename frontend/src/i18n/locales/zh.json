@@ -1,0 +1,128 @@
+{
+  "navigation": {
+    "dashboard": "仪表板",
+    "credentials": "凭证",
+    "createDid": "创建DID",
+    "resolveDid": "解析DID",
+    "connectWallet": "连接钱包",
+    "account": "账户",
+    "scanner": "扫描器",
+    "contracts": "合约"
+  },
+  "dashboard": {
+    "title": "Stellar DID平台仪表板",
+    "subtitle": "您的去中心化身份生态系统概览",
+    "stats": {
+      "totalDids": "DID总数",
+      "totalCredentials": "凭证总数",
+      "activeUsers": "活跃用户",
+      "network": "网络",
+      "contractAddress": "合约地址",
+      "contractVersion": "合约版本",
+      "uptime": "运行时间",
+      "avgResponseTime": "平均响应时间",
+      "lastRefreshed": "最后刷新",
+      "mockData": "模拟数据"
+    },
+    "recentActivity": "最近活动",
+    "networkStats": "网络统计"
+  },
+  "credentials": {
+    "title": "可验证凭证",
+    "subtitle": "在Stellar区块链上管理、颁发和验证可验证凭证",
+    "browseCredentials": "浏览凭证",
+    "issueVerify": "颁发和验证",
+    "total": "凭证",
+    "refresh": "刷新",
+    "listView": "列表视图",
+    "virtualScroll": "虚拟滚动",
+    "filters": "筛选器",
+    "clearAll": "清除全部",
+    "search": "搜索",
+    "searchPlaceholder": "按ID、颁发者或主题搜索...",
+    "type": "类型",
+    "status": "状态",
+    "expiration": "过期",
+    "sortBy": "排序方式",
+    "allTypes": "所有类型",
+    "allStatus": "所有状态",
+    "valid": "有效",
+    "revoked": "已撤销",
+    "notExpired": "未过期",
+    "expired": "已过期",
+    "issuedDate": "颁发日期",
+    "expirationDate": "过期日期",
+    "issuer": "颁发者",
+    "subject": "主题",
+    "issued": "颁发",
+    "expires": "过期",
+    "noCredentialsFound": "未找到符合您条件的凭证。",
+    "rowsPerPage": "每页行数",
+    "showing": "显示",
+    "of": "共",
+    "virtualScrollingEnabled": "启用虚拟滚动以获得最佳性能",
+    "switchToListView": "切换到列表视图"
+  },
+  "credentialManager": {
+    "issueCredential": "颁发凭证",
+    "verifyCredential": "验证凭证",
+    "credentialTemplates": "凭证模板",
+    "templateClickToUse": "点击使用模板：",
+    "issuerDid": "颁发者DID",
+    "subjectDid": "主题DID",
+    "credentialType": "凭证类型",
+    "claims": "声明",
+    "claimsPlaceholder": "{\"degree\": \"学士学位\", \"university\": \"示例大学\"}",
+    "issueCredentialBtn": "颁发凭证",
+    "verifyCredentialBtn": "验证凭证",
+    "credentialId": "凭证ID",
+    "credentialIdPlaceholder": "输入要验证的凭证ID",
+    "scanQrCode": "扫描二维码",
+    "credentialIssued": "凭证已颁发",
+    "verificationResult": "验证结果",
+    "copyCredentialId": "复制凭证ID",
+    "credentialIdCopied": "凭证ID已复制到剪贴板！"
+  },
+  "forms": {
+    "required": "此字段为必填项",
+    "invalidDidFormat": "DID格式无效",
+    "invalidJson": "JSON格式无效"
+  },
+  "types": {
+    "universityDegree": "大学学位",
+    "professionalLicense": "专业执照",
+    "ageVerification": "年龄验证",
+    "employmentVerification": "就业验证"
+  },
+  "status": {
+    "valid": "有效",
+    "revoked": "已撤销",
+    "expired": "已过期"
+  },
+  "actions": {
+    "viewDetails": "查看详情",
+    "copyId": "复制ID",
+    "refresh": "刷新",
+    "clear": "清除",
+    "search": "搜索",
+    "filter": "筛选",
+    "issue": "颁发",
+    "verify": "验证",
+    "scan": "扫描"
+  },
+  "messages": {
+    "credentialIssuedSuccess": "凭证颁发成功！",
+    "credentialVerifiedSuccess": "凭证验证成功！",
+    "credentialIdCopied": "凭证ID已复制到剪贴板！",
+    "errorOccurred": "发生错误",
+    "loading": "加载中...",
+    "noDataAvailable": "无可用数据"
+  },
+  "errors": {
+    "networkError": "网络错误。请重试。",
+    "validationError": "验证错误。请检查您的输入。",
+    "notFound": "未找到资源。",
+    "unauthorized": "未经授权的访问。",
+    "serverError": "服务器错误。请稍后重试。"
+  }
+}

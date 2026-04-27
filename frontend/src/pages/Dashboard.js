@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Card,
@@ -15,6 +16,7 @@ import {
   ListItemIcon,
   Divider
 } from '@mui/material';
+import { DashboardSkeleton } from '../components/SkeletonLoader';
 import {
   AccountBalance,
   VerifiedUser,
@@ -46,6 +48,7 @@ const MOCK_STATS = {
 };
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -176,10 +179,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <Box component="main" aria-label="Dashboard" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
-        <Typography variant="h4" gutterBottom>
-          Dashboard
-        </Typography>
-        <LinearProgress aria-label="Loading dashboard data" />
+        <DashboardSkeleton />
       </Box>
     );
   }
@@ -187,39 +187,29 @@ const Dashboard = () => {
   return (
     <Box component="main" aria-label="Stellar DID Platform Dashboard" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
       <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-        Stellar DID Platform Dashboard
+        {t("dashboard.title")}
       </Typography>
       <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1} mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="caption" color="text.secondary">
-            Last Refreshed: {stats?.lastRefreshed || 'Never'}
+            {t("dashboard.stats.lastRefreshed")}: {stats?.lastRefreshed || 'Never'}
           </Typography>
           {stats?.isUsingMockData && (
             <Chip
-              label="Mock Data"
+              label={t("dashboard.stats.mockData")}
               size="small"
               color="warning"
-              variant="outlined"
-              aria-label="Using mock data because backend is unavailable"
             />
           )}
         </Box>
-        <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
-          <Button
-            variant="outlined"
-            onClick={() => fetchDashboardData({ showLoading: false })}
-            startIcon={<TrendingUp />}
-            disabled={loading || refreshing}
-            aria-label="Refresh dashboard data"
-          >
-            Refresh
-          </Button>
-          {refreshing && (
-            <Typography variant="caption" color="text.secondary" aria-live="polite">
-              Refreshing...
-            </Typography>
-          )}
-        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<Refresh />}
+          onClick={() => fetchDashboardData({ showLoading: false })}
+          disabled={refreshing}
+        >
+          {refreshing ? 'Refreshing...' : t("actions.refresh")}
+        </Button>
       </Box>
       {error && (
         <ErrorDisplay error={error} onClose={() => setError(null)} />
