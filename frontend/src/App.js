@@ -1,11 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './i18n';
 
+import { ThemeModeProvider, useThemeMode } from './contexts/ThemeContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Credentials from './pages/Credentials';
@@ -16,24 +17,11 @@ import ConnectWallet from './pages/ConnectWallet';
 import Account from './pages/Account';
 import Scanner from './pages/Scanner';
 import Contracts from './pages/Contracts';
-import ErrorDisplay from './components/ErrorDisplay';
+import VerifyCredential from './pages/VerifyCredential';
 
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
+function AppContent() {
+  const { theme, mode } = useThemeMode();
 
-function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -52,6 +40,7 @@ function App() {
               <Route path="/account" element={<Account />} />
               <Route path="/scanner" element={<Scanner />} />
               <Route path="/contracts" element={<Contracts />} />
+              <Route path="/verify-credential" element={<VerifyCredential />} />
             </Routes>
           </main>
           <ToastContainer
@@ -64,10 +53,19 @@ function App() {
             pauseOnFocusLoss
             draggable
             pauseOnHover
+            theme={mode === 'dark' ? 'dark' : 'light'}
           />
         </div>
       </Router>
     </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <ThemeModeProvider>
+      <AppContent />
+    </ThemeModeProvider>
   );
 }
 

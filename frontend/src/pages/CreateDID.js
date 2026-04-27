@@ -12,13 +12,19 @@ import {
   Paper,
   Divider,
   IconButton,
+  InputAdornment,
+  LinearProgress,
+  Step,
+  StepLabel,
+  Stepper,
   Tooltip,
 } from "@mui/material";
 import {
   AccountBalance,
-  ContentCopy,
-  Refresh,
   CheckCircle,
+  ContentCopy,
+  ErrorOutline,
+  Refresh,
 } from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -55,6 +61,22 @@ const schema = yup.object().shape({
     ),
 });
 
+const STEPS = ["Connect Wallet", "Configure DID", "Submit"];
+
+/** Returns an InputAdornment icon based on field touch/error state */
+const FieldStatusAdornment = ({ isTouched, hasError }) => {
+  if (!isTouched) return null;
+  return (
+    <InputAdornment position="end">
+      {hasError ? (
+        <ErrorOutline color="error" fontSize="small" aria-label="Field has an error" />
+      ) : (
+        <CheckCircle color="success" fontSize="small" aria-label="Field is valid" />
+      )}
+    </InputAdornment>
+  );
+};
+
 const CreateDID = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -71,7 +93,7 @@ const CreateDID = () => {
     handleSubmit,
     reset,
     watch,
-    formState: { errors, isValid },
+    formState: { errors, isValid, touchedFields },
   } = useForm({
     resolver: yupResolver(schema),
     mode: "onChange", // Provides real-time feedback as the user types
@@ -153,14 +175,37 @@ const CreateDID = () => {
   };
 
   return (
-    <Box component="main" aria-label="Create DID page">
-      <Typography variant="h4" gutterBottom fontWeight="bold">
+    <Box component="main" aria-label="Create DID page" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
         Create Decentralized Identity
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Create a new DID on the Stellar blockchain to manage your digital
         identity
       </Typography>
+
+      {/* Step progress indicator */}
+      <Stepper
+        activeStep={!isConnected ? 0 : result ? 2 : 1}
+        alternativeLabel
+        sx={{ mb: 4, display: { xs: 'none', sm: 'flex' } }}
+      >
+        {STEPS.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+
+      {/* Loading overlay bar */}
+      {loading && (
+        <Box sx={{ mb: 2 }}>
+          <LinearProgress aria-label="Submitting DID creation request" />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+            Submitting to Stellar network…
+          </Typography>
+        </Box>
+      )}
 
       <Grid container spacing={3} role="region" aria-label="Create DID form">
         {/* Wallet Connection */}
@@ -270,6 +315,7 @@ const CreateDID = () => {
               <form
                 onSubmit={handleSubmit(handleCreateDID)}
                 aria-label="Create DID form"
+                noValidate
               >
                 <Controller
                   name="didIdentifier"
@@ -284,8 +330,16 @@ const CreateDID = () => {
                       error={!!errors.didIdentifier}
                       helperText={
                         errors.didIdentifier?.message ||
-                        "Alphanumeric and hyphens only"
+                        "Alphanumeric and hyphens only (3–32 chars)"
                       }
+                      InputProps={{
+                        endAdornment: (
+                          <FieldStatusAdornment
+                            isTouched={!!touchedFields.didIdentifier}
+                            hasError={!!errors.didIdentifier}
+                          />
+                        ),
+                      }}
                     />
                   )}
                 />
@@ -331,7 +385,18 @@ const CreateDID = () => {
                       fullWidth
                       margin="normal"
                       error={!!errors.serviceEndpoint}
-                      helperText={errors.serviceEndpoint?.message}
+                      helperText={
+                        errors.serviceEndpoint?.message ||
+                        "Optional: public URL for your DID service"
+                      }
+                      InputProps={{
+                        endAdornment: (
+                          <FieldStatusAdornment
+                            isTouched={!!touchedFields.serviceEndpoint}
+                            hasError={!!errors.serviceEndpoint}
+                          />
+                        ),
+                      }}
                     />
                   )}
                 />
@@ -350,11 +415,25 @@ const CreateDID = () => {
                       error={!!errors.signerSecret}
                       helperText={
                         errors.signerSecret?.message ||
-                        "Stellar secret key (starts with S)"
+                        "Stellar secret key (starts with S, 56 chars)"
                       }
+                      InputProps={{
+                        endAdornment: (
+                          <FieldStatusAdornment
+                            isTouched={!!touchedFields.signerSecret}
+                            hasError={!!errors.signerSecret}
+                          />
+                        ),
+                      }}
                     />
                   )}
                 />
+
+                {!isConnected && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    Please connect your wallet before submitting.
+                  </Alert>
+                )}
 
                 <Button
                   type="submit"
@@ -365,9 +444,13 @@ const CreateDID = () => {
                   }
                   fullWidth
                   sx={{ mt: 2 }}
+                  aria-label={loading ? "Creating DID, please wait" : "Create DID"}
                 >
                   {loading ? (
-                    <CircularProgress size={24} aria-hidden="true" />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CircularProgress size={20} color="inherit" aria-hidden="true" />
+                      Creating DID…
+                    </Box>
                   ) : (
                     "Create DID"
                   )}

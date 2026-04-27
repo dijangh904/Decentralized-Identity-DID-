@@ -1,19 +1,22 @@
 import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Typography,
   Tabs,
   Tab,
-  Alert,
 } from "@mui/material";
+import { VerifiedUser } from "@mui/icons-material";
 import CredentialList from "../components/CredentialList";
 import CredentialManager from "../components/CredentialManager";
 
 const Credentials = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const credentialId = location.state?.fieldValue;
   const [activeTab, setActiveTab] = useState(0);
 
@@ -63,6 +66,16 @@ const Credentials = () => {
             )}
             <Box sx={{ mt: 3 }}>
               <CredentialManager />
+            </Box>
+            <Box sx={{ mt: 3 }}>
+              <Button
+                variant="outlined"
+                startIcon={<VerifiedUser />}
+                onClick={() => navigate("/verify-credential")}
+                aria-label="Go to credential verification page"
+              >
+                Verify a Credential
+              </Button>
             </Box>
           </CardContent>
         </Card>

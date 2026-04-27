@@ -40,7 +40,7 @@ export function resolveRoute(payload) {
     case "credential":
       return { route: "/credentials", fieldValue: payload.credentialId };
     case "connection":
-      return { route: "/connect", fieldValue: payload.publicKey };
+      return { route: "/connect-wallet", fieldValue: payload.publicKey };
     default:
       return { route: "/", fieldValue: "" };
   }
