@@ -2,8 +2,7 @@ import axios from "axios";
 import secureStorage from "../utils/secureStorage";
 
 // Create axios instance with default configuration
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "/api/v1";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "/api/v1";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -26,17 +25,63 @@ api.interceptors.request.use(
     return Promise.reject(error);
   },
 );
+const OFFLINE_CACHE_PREFIX = "stellar-did-api-cache:";
 
+const getCacheKey = (config) => {
+  const url = `${config.baseURL || ""}${config.url || ""}`;
+  const params = config.params ? JSON.stringify(config.params) : "";
+  return `${OFFLINE_CACHE_PREFIX}${config.method || "get"}:${url}:${params}`;
+};
+
+const cacheResponse = (config, data) => {
+  if ((config.method || "get").toLowerCase() !== "get") return;
+
+  try {
+    localStorage.setItem(
+      getCacheKey(config),
+      JSON.stringify({
+        data,
+        cachedAt: new Date().toISOString(),
+      }),
+    );
+  } catch (error) {
+    console.warn("Failed to cache API response:", error);
+  }
+};
+
+const getCachedResponse = (config) => {
+  try {
+    const cached = localStorage.getItem(getCacheKey(config));
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => {
+    cacheResponse(response.config, response.data);
     return response;
   },
   (error) => {
-    // Handle common errors
     if (error.response?.status === 401) {
       secureStorage.removeAuthToken();
       window.location.href = "/login";
+    }
+
+    if (!navigator.onLine || error.message === "Network Error") {
+      const cached = getCachedResponse(error.config || {});
+      if (cached) {
+        return Promise.resolve({
+          data: cached.data,
+          status: 200,
+          statusText: "OK (offline cache)",
+          headers: {},
+          config: error.config,
+          offline: true,
+          cachedAt: cached.cachedAt,
+        });
+      }
     }
 
     return Promise.reject(error);
@@ -86,7 +131,8 @@ export const stellarAPI = {
     revoke: (data) => api.post("/credentials/revoke", data),
     getCredentials: (params) => api.get("/credentials", { params }),
     getCredential: (id) => api.get(`/credentials/${id}`),
-    search: (query, params) => api.get("/credentials/search", { params: { q: query, ...params } }),
+    search: (query, params) =>
+      api.get("/credentials/search", { params: { q: query, ...params } }),
     getCount: (params) => api.get("/credentials/count", { params }),
   },
 
@@ -107,8 +153,7 @@ export const stellarAPI = {
 };
 
 // Health check
-export const healthCheck = () =>
-  api.get("/health");
+export const healthCheck = () => api.get("/health");
 
 // Utility functions
 export const setAuthToken = (token) => {
