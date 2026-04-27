@@ -3,7 +3,11 @@
  * Provides various utilities to enhance user experience
  */
 
-import { sanitizeSuggestions, sanitizeHtml, sanitizeJsonForDisplay } from './inputSanitization';
+import {
+  sanitizeSuggestions,
+  sanitizeHtml,
+  sanitizeJsonForDisplay,
+} from "./inputSanitization";
 
 class UXOptimizer {
   constructor() {
@@ -17,7 +21,7 @@ class UXOptimizer {
       shortcuts: new KeyboardShortcuts(),
       tooltips: new TooltipManager(),
       notifications: new NotificationManager(),
-      search: new SmartSearch()
+      search: new SmartSearch(),
     };
   }
 
@@ -36,12 +40,12 @@ class UXOptimizer {
         this.features.shortcuts.initialize(),
         this.features.tooltips.initialize(),
         this.features.notifications.initialize(),
-        this.features.search.initialize()
+        this.features.search.initialize(),
       ]);
 
-      console.log('UX Optimizer initialized successfully');
+      console.log("UX Optimizer initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize UX Optimizer:', error);
+      console.error("Failed to initialize UX Optimizer:", error);
       throw error;
     }
   }
@@ -60,7 +64,7 @@ class UXOptimizer {
       shortcuts: this.features.shortcuts.getStatus(),
       tooltips: this.features.tooltips.getStatus(),
       notifications: this.features.notifications.getStatus(),
-      search: this.features.search.getStatus()
+      search: this.features.search.getStatus(),
     };
   }
 }
@@ -79,7 +83,7 @@ class SmartForms {
     this.setupGlobalValidation();
     this.setupAutoComplete();
     this.setupSmartDefaults();
-    console.log('Smart Forms initialized');
+    console.log("Smart Forms initialized");
   }
 
   /**
@@ -88,12 +92,14 @@ class SmartForms {
   registerForm(formId, config) {
     const form = {
       id: formId,
-      element: document.getElementById(formId) || document.querySelector(`[data-form="${formId}"]`),
+      element:
+        document.getElementById(formId) ||
+        document.querySelector(`[data-form="${formId}"]`),
       config,
       fields: new Map(),
       validation: config.validation || {},
       autoComplete: config.autoComplete || false,
-      smartDefaults: config.smartDefaults || {}
+      smartDefaults: config.smartDefaults || {},
     };
 
     if (!form.element) {
@@ -113,9 +119,9 @@ class SmartForms {
    * Setup form fields
    */
   setupFormFields(form) {
-    const fields = form.element.querySelectorAll('input, select, textarea');
-    
-    fields.forEach(field => {
+    const fields = form.element.querySelectorAll("input, select, textarea");
+
+    fields.forEach((field) => {
       const fieldName = field.name || field.id;
       form.fields.set(fieldName, {
         element: field,
@@ -123,7 +129,7 @@ class SmartForms {
         required: field.required,
         validation: form.validation[fieldName] || {},
         autoComplete: form.autoComplete && form.autoComplete[fieldName],
-        smartDefault: form.smartDefaults[fieldName]
+        smartDefault: form.smartDefaults[fieldName],
       });
 
       // Add event listeners
@@ -136,11 +142,11 @@ class SmartForms {
    */
   setupFieldEvents(form, fieldName, field) {
     // Real-time validation
-    field.addEventListener('blur', () => {
+    field.addEventListener("blur", () => {
       this.validateField(form, fieldName);
     });
 
-    field.addEventListener('input', () => {
+    field.addEventListener("input", () => {
       this.clearFieldError(form, fieldName);
       this.showFieldHelp(form, fieldName);
     });
@@ -168,30 +174,30 @@ class SmartForms {
 
     // Required validation
     if (validation.required && !value.trim()) {
-      errors.push('This field is required');
+      errors.push("This field is required");
     }
 
     // Type-specific validation
     if (value && validation.type) {
       switch (validation.type) {
-        case 'email':
+        case "email":
           if (!this.isValidEmail(value)) {
-            errors.push('Please enter a valid email address');
+            errors.push("Please enter a valid email address");
           }
           break;
-        case 'url':
+        case "url":
           if (!this.isValidUrl(value)) {
-            errors.push('Please enter a valid URL');
+            errors.push("Please enter a valid URL");
           }
           break;
-        case 'did':
+        case "did":
           if (!this.isValidDID(value)) {
-            errors.push('Please enter a valid DID format');
+            errors.push("Please enter a valid DID format");
           }
           break;
-        case 'stellar':
+        case "stellar":
           if (!this.isValidStellarAddress(value)) {
-            errors.push('Please enter a valid Stellar address');
+            errors.push("Please enter a valid Stellar address");
           }
           break;
       }
@@ -207,12 +213,16 @@ class SmartForms {
     }
 
     // Pattern validation
-    if (value && validation.pattern && !new RegExp(validation.pattern).test(value)) {
-      errors.push(validation.patternMessage || 'Invalid format');
+    if (
+      value &&
+      validation.pattern &&
+      !new RegExp(validation.pattern).test(value)
+    ) {
+      errors.push(validation.patternMessage || "Invalid format");
     }
 
     // Custom validation
-    if (validation.custom && typeof validation.custom === 'function') {
+    if (validation.custom && typeof validation.custom === "function") {
       const customError = validation.custom(value);
       if (customError) {
         errors.push(customError);
@@ -234,17 +244,17 @@ class SmartForms {
     this.clearFieldError(form, fieldName);
 
     if (errors.length > 0) {
-      field.classList.add('error');
-      
-      const errorElement = document.createElement('div');
-      errorElement.className = 'field-error';
+      field.classList.add("error");
+
+      const errorElement = document.createElement("div");
+      errorElement.className = "field-error";
       errorElement.textContent = errors[0]; // Show first error
-      errorElement.setAttribute('data-field', fieldName);
-      
+      errorElement.setAttribute("data-field", fieldName);
+
       field.parentNode.appendChild(errorElement);
     } else {
-      field.classList.remove('error');
-      field.classList.add('valid');
+      field.classList.remove("error");
+      field.classList.add("valid");
     }
   }
 
@@ -253,9 +263,11 @@ class SmartForms {
    */
   clearFieldError(form, fieldName) {
     const field = form.fields.get(fieldName).element;
-    field.classList.remove('error', 'valid');
-    
-    const errorElement = field.parentNode.querySelector(`[data-field="${fieldName}"]`);
+    field.classList.remove("error", "valid");
+
+    const errorElement = field.parentNode.querySelector(
+      `[data-field="${fieldName}"]`,
+    );
     if (errorElement) {
       errorElement.remove();
     }
@@ -267,7 +279,7 @@ class SmartForms {
   showFieldHelp(form, fieldName) {
     const fieldData = form.fields.get(fieldName);
     const help = fieldData.validation.help;
-    
+
     if (help) {
       // Implementation for showing help text
     }
@@ -278,35 +290,35 @@ class SmartForms {
    */
   setupFieldAutoComplete(form, fieldName, field) {
     const autoCompleteConfig = form.fields.get(fieldName).autoComplete;
-    
+
     // Create auto-complete dropdown
-    const dropdown = document.createElement('div');
-    dropdown.className = 'autocomplete-dropdown';
-    dropdown.style.display = 'none';
+    const dropdown = document.createElement("div");
+    dropdown.className = "autocomplete-dropdown";
+    dropdown.style.display = "none";
     field.parentNode.appendChild(dropdown);
 
-    field.addEventListener('input', () => {
+    field.addEventListener("input", () => {
       const value = field.value;
       if (value.length >= 2) {
         this.showAutoCompleteSuggestions(form, fieldName, value, dropdown);
       } else {
-        dropdown.style.display = 'none';
+        dropdown.style.display = "none";
       }
     });
 
     // Handle selection
-    dropdown.addEventListener('click', (e) => {
-      if (e.target.classList.contains('autocomplete-item')) {
+    dropdown.addEventListener("click", (e) => {
+      if (e.target.classList.contains("autocomplete-item")) {
         field.value = e.target.textContent;
-        dropdown.style.display = 'none';
+        dropdown.style.display = "none";
         field.focus();
       }
     });
 
     // Hide on blur
-    field.addEventListener('blur', () => {
+    field.addEventListener("blur", () => {
       setTimeout(() => {
-        dropdown.style.display = 'none';
+        dropdown.style.display = "none";
       }, 200);
     });
   }
@@ -317,14 +329,16 @@ class SmartForms {
   showAutoCompleteSuggestions(form, fieldName, value, dropdown) {
     const suggestions = this.getAutoCompleteSuggestions(fieldName, value);
     const sanitizedSuggestions = sanitizeSuggestions(suggestions);
-    
+
     if (sanitizedSuggestions.length > 0) {
       dropdown.innerHTML = sanitizedSuggestions
-        .map(suggestion => `<div class="autocomplete-item">${suggestion}</div>`)
-        .join('');
-      dropdown.style.display = 'block';
+        .map(
+          (suggestion) => `<div class="autocomplete-item">${suggestion}</div>`,
+        )
+        .join("");
+      dropdown.style.display = "block";
     } else {
-      dropdown.style.display = 'none';
+      dropdown.style.display = "none";
     }
   }
 
@@ -334,7 +348,7 @@ class SmartForms {
   getAutoCompleteSuggestions(fieldName, value) {
     const data = this.autoCompleteData.get(fieldName) || [];
     return data
-      .filter(item => item.toLowerCase().includes(value.toLowerCase()))
+      .filter((item) => item.toLowerCase().includes(value.toLowerCase()))
       .slice(0, 5);
   }
 
@@ -343,8 +357,8 @@ class SmartForms {
    */
   applySmartDefault(form, fieldName, field) {
     const smartDefault = form.fields.get(fieldName).smartDefault;
-    
-    if (typeof smartDefault === 'function') {
+
+    if (typeof smartDefault === "function") {
       const defaultValue = smartDefault();
       if (defaultValue && !field.value) {
         field.value = defaultValue;
@@ -362,7 +376,7 @@ class SmartForms {
     if (!form) return false;
 
     let isValid = true;
-    
+
     for (const [fieldName] of form.fields) {
       if (!this.validateField(form, fieldName)) {
         isValid = false;
@@ -380,7 +394,7 @@ class SmartForms {
     if (!form) return {};
 
     const data = {};
-    
+
     for (const [fieldName, fieldData] of form.fields) {
       data[fieldName] = fieldData.element.value;
     }
@@ -417,7 +431,7 @@ class SmartForms {
    */
   setupGlobalValidation() {
     // Add global validation styles
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       .field-error {
         color: #dc3545;
@@ -463,17 +477,17 @@ class SmartForms {
    */
   setupAutoComplete() {
     // Load auto-complete data
-    this.autoCompleteData.set('serviceEndpoint', [
-      'https://did.example.com',
-      'https://identity.example.com',
-      'https://hub.example.com'
+    this.autoCompleteData.set("serviceEndpoint", [
+      "https://did.example.com",
+      "https://identity.example.com",
+      "https://hub.example.com",
     ]);
-    
-    this.autoCompleteData.set('credentialType', [
-      'VerifiableCredential',
-      'DegreeCredential',
-      'EmploymentCredential',
-      'IdentityCredential'
+
+    this.autoCompleteData.set("credentialType", [
+      "VerifiableCredential",
+      "DegreeCredential",
+      "EmploymentCredential",
+      "IdentityCredential",
     ]);
   }
 
@@ -488,7 +502,7 @@ class SmartForms {
     return {
       active: true,
       formsRegistered: this.forms.size,
-      validatorsLoaded: this.validators.size
+      validatorsLoaded: this.validators.size,
     };
   }
 }
@@ -505,25 +519,28 @@ class ProgressiveLoading {
   async initialize() {
     this.setupIntersectionObserver();
     this.setupLazyLoading();
-    console.log('Progressive Loading initialized');
+    console.log("Progressive Loading initialized");
   }
 
   /**
    * Setup intersection observer for lazy loading
    */
   setupIntersectionObserver() {
-    if (!('IntersectionObserver' in window)) return;
+    if (!("IntersectionObserver" in window)) return;
 
-    this.observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          this.loadContent(entry.target);
-          this.observer.unobserve(entry.target);
-        }
-      });
-    }, {
-      rootMargin: '50px'
-    });
+    this.observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            this.loadContent(entry.target);
+            this.observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        rootMargin: "50px",
+      },
+    );
   }
 
   /**
@@ -531,12 +548,12 @@ class ProgressiveLoading {
    */
   setupLazyLoading() {
     // Lazy load images
-    document.querySelectorAll('img[data-src]').forEach(img => {
+    document.querySelectorAll("img[data-src]").forEach((img) => {
       this.observer.observe(img);
     });
 
     // Lazy load content sections
-    document.querySelectorAll('[data-lazy-load]').forEach(element => {
+    document.querySelectorAll("[data-lazy-load]").forEach((element) => {
       this.observer.observe(element);
     });
   }
@@ -545,8 +562,8 @@ class ProgressiveLoading {
    * Load content
    */
   async loadContent(element) {
-    const src = element.dataset.src || element.getAttribute('data-lazy-load');
-    const type = element.dataset.type || 'image';
+    const src = element.dataset.src || element.getAttribute("data-lazy-load");
+    const type = element.dataset.type || "image";
 
     if (this.loadedContent.has(src)) {
       this.applyContent(element, this.loadedContent.get(src), type);
@@ -558,13 +575,13 @@ class ProgressiveLoading {
 
       let content;
       switch (type) {
-        case 'image':
+        case "image":
           content = await this.loadImage(src);
           break;
-        case 'component':
+        case "component":
           content = await this.loadComponent(src);
           break;
-        case 'data':
+        case "data":
           content = await this.loadData(src);
           break;
         default:
@@ -596,10 +613,10 @@ class ProgressiveLoading {
   async loadComponent(src) {
     const response = await fetch(src);
     const html = await response.text();
-    
-    const tempDiv = document.createElement('div');
+
+    const tempDiv = document.createElement("div");
     tempDiv.innerHTML = sanitizeHtml(html);
-    
+
     return tempDiv.firstElementChild;
   }
 
@@ -624,15 +641,15 @@ class ProgressiveLoading {
    */
   applyContent(element, content, type) {
     switch (type) {
-      case 'image':
+      case "image":
         element.src = content.src;
-        element.classList.remove('loading');
-        element.classList.add('loaded');
+        element.classList.remove("loading");
+        element.classList.add("loaded");
         break;
-      case 'component':
+      case "component":
         element.parentNode.replaceChild(content, element);
         break;
-      case 'data':
+      case "data":
         this.renderData(element, content);
         break;
       default:
@@ -646,21 +663,21 @@ class ProgressiveLoading {
   renderData(element, data) {
     // Use sanitized JSON rendering to prevent XSS
     element.innerHTML = `<pre>${sanitizeJsonForDisplay(data)}</pre>`;
-    element.classList.remove('loading');
-    element.classList.add('loaded');
+    element.classList.remove("loading");
+    element.classList.add("loaded");
   }
 
   /**
    * Show loading state
    */
   showLoadingState(element) {
-    element.classList.add('loading');
-    
-    if (element.dataset.type === 'image') {
-      element.style.opacity = '0.5';
+    element.classList.add("loading");
+
+    if (element.dataset.type === "image") {
+      element.style.opacity = "0.5";
     } else {
       // Use textContent to prevent XSS
-      element.textContent = 'Loading...';
+      element.textContent = "Loading...";
     }
   }
 
@@ -668,25 +685,25 @@ class ProgressiveLoading {
    * Show error state
    */
   showErrorState(element, error) {
-    element.classList.remove('loading');
-    element.classList.add('error');
-    
-    if (element.dataset.type === 'image') {
-      element.style.opacity = '1';
-      element.alt = 'Failed to load';
+    element.classList.remove("loading");
+    element.classList.add("error");
+
+    if (element.dataset.type === "image") {
+      element.style.opacity = "1";
+      element.alt = "Failed to load";
     } else {
       // Use textContent to prevent XSS
-      element.textContent = 'Failed to load content';
+      element.textContent = "Failed to load content";
     }
-    
-    console.error('Progressive loading error:', error);
+
+    console.error("Progressive loading error:", error);
   }
 
   /**
    * Preload critical content
    */
   async preloadCritical(paths) {
-    const promises = paths.map(path => {
+    const promises = paths.map((path) => {
       if (path.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
         return this.loadImage(path);
       } else {
@@ -696,9 +713,9 @@ class ProgressiveLoading {
 
     try {
       await Promise.all(promises);
-      console.log('Critical content preloaded');
+      console.log("Critical content preloaded");
     } catch (error) {
-      console.error('Failed to preload critical content:', error);
+      console.error("Failed to preload critical content:", error);
     }
   }
 
@@ -706,7 +723,7 @@ class ProgressiveLoading {
     return {
       active: true,
       observerActive: !!this.observer,
-      contentLoaded: this.loadedContent.size
+      contentLoaded: this.loadedContent.size,
     };
   }
 }
@@ -725,20 +742,21 @@ class OfflineSupport {
     this.setupServiceWorker();
     this.setupOnlineStatusMonitoring();
     this.setupOfflineStorage();
-    console.log('Offline Support initialized');
+    console.log("Offline Support initialized");
   }
 
   /**
    * Setup service worker
    */
   setupServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('Service Worker registered:', registration);
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/service-worker.js")
+        .then((registration) => {
+          console.log("Service Worker registered:", registration);
         })
-        .catch(error => {
-          console.error('Service Worker registration failed:', error);
+        .catch((error) => {
+          console.error("Service Worker registration failed:", error);
         });
     }
   }
@@ -747,12 +765,12 @@ class OfflineSupport {
    * Setup online status monitoring
    */
   setupOnlineStatusMonitoring() {
-    window.addEventListener('online', () => {
+    window.addEventListener("online", () => {
       this.isOnline = true;
       this.handleOnlineStatus();
     });
 
-    window.addEventListener('offline', () => {
+    window.addEventListener("offline", () => {
       this.isOnline = false;
       this.handleOfflineStatus();
     });
@@ -762,11 +780,11 @@ class OfflineSupport {
    * Setup offline storage
    */
   setupOfflineStorage() {
-    if ('caches' in window) {
-      this.cache = caches.open('stellar-did-offline-v1');
+    if ("caches" in window) {
+      this.cache = caches.open("stellar-did-offline-v1");
     }
 
-    if ('indexedDB' in window) {
+    if ("indexedDB" in window) {
       this.setupIndexedDB();
     }
   }
@@ -798,21 +816,21 @@ class OfflineSupport {
    * Show online notification
    */
   showOnlineNotification() {
-    this.showNotification('Connection restored', 'success');
+    this.showNotification("Connection restored", "success");
   }
 
   /**
    * Show offline notification
    */
   showOfflineNotification() {
-    this.showNotification('Offline mode activated', 'warning');
+    this.showNotification("Offline mode activated", "warning");
   }
 
   /**
    * Enable offline mode
    */
   enableOfflineMode() {
-    document.body.classList.add('offline-mode');
+    document.body.classList.add("offline-mode");
   }
 
   /**
@@ -823,15 +841,15 @@ class OfflineSupport {
 
     try {
       const results = await Promise.allSettled(
-        this.syncQueue.map(item => this.syncItem(item))
+        this.syncQueue.map((item) => this.syncItem(item)),
       );
 
       this.syncQueue = [];
-      document.body.classList.remove('offline-mode');
-      
-      console.log('Offline data synced:', results);
+      document.body.classList.remove("offline-mode");
+
+      console.log("Offline data synced:", results);
     } catch (error) {
-      console.error('Failed to sync offline data:', error);
+      console.error("Failed to sync offline data:", error);
     }
   }
 
@@ -843,7 +861,7 @@ class OfflineSupport {
     const response = await fetch(item.url, {
       method: item.method,
       headers: item.headers,
-      body: item.body
+      body: item.body,
     });
 
     return response.json();
@@ -858,7 +876,7 @@ class OfflineSupport {
       await cache.put(url, new Response(content));
       this.cachedContent.set(url, content);
     } catch (error) {
-      console.error('Failed to cache content:', error);
+      console.error("Failed to cache content:", error);
     }
   }
 
@@ -869,14 +887,14 @@ class OfflineSupport {
     try {
       const cache = await this.cache;
       const response = await cache.match(url);
-      
+
       if (response) {
         return await response.text();
       }
     } catch (error) {
-      console.error('Failed to get cached content:', error);
+      console.error("Failed to get cached content:", error);
     }
-    
+
     return null;
   }
 
@@ -890,7 +908,7 @@ class OfflineSupport {
   /**
    * Show notification
    */
-  showNotification(message, type = 'info') {
+  showNotification(message, type = "info") {
     // Implementation depends on notification system
     console.log(`[${type.toUpperCase()}] ${message}`);
   }
@@ -900,7 +918,7 @@ class OfflineSupport {
       active: true,
       isOnline: this.isOnline,
       cachedContent: this.cachedContent.size,
-      syncQueueLength: this.syncQueue.length
+      syncQueueLength: this.syncQueue.length,
     };
   }
 }
@@ -914,7 +932,7 @@ class Accessibility {
       highContrast: false,
       largeText: false,
       reducedMotion: false,
-      screenReader: false
+      screenReader: false,
     };
   }
 
@@ -924,7 +942,7 @@ class Accessibility {
     this.setupFocusManagement();
     this.setupScreenReaderSupport();
     this.loadUserPreferences();
-    console.log('Accessibility initialized');
+    console.log("Accessibility initialized");
   }
 
   /**
@@ -932,10 +950,10 @@ class Accessibility {
    */
   setupKeyboardNavigation() {
     // Skip to main content link
-    const skipLink = document.createElement('a');
-    skipLink.href = '#main-content';
-    skipLink.textContent = 'Skip to main content';
-    skipLink.className = 'skip-link';
+    const skipLink = document.createElement("a");
+    skipLink.href = "#main-content";
+    skipLink.textContent = "Skip to main content";
+    skipLink.className = "skip-link";
     document.body.insertBefore(skipLink, document.body.firstChild);
 
     // Focus indicators
@@ -949,7 +967,7 @@ class Accessibility {
    * Setup focus indicators
    */
   setupFocusIndicators() {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       :focus {
         outline: 2px solid #007bff;
@@ -978,21 +996,21 @@ class Accessibility {
    * Setup keyboard shortcuts
    */
   setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener("keydown", (e) => {
       // Alt + S: Skip to main
-      if (e.altKey && e.key === 's') {
+      if (e.altKey && e.key === "s") {
         e.preventDefault();
-        document.getElementById('main-content')?.focus();
+        document.getElementById("main-content")?.focus();
       }
 
       // Alt + H: Go to home
-      if (e.altKey && e.key === 'h') {
+      if (e.altKey && e.key === "h") {
         e.preventDefault();
-        window.location.href = '/';
+        window.location.href = "/";
       }
 
       // Escape: Close modals
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         this.closeAllModals();
       }
     });
@@ -1003,9 +1021,9 @@ class Accessibility {
    */
   setupAriaLabels() {
     // Add ARIA labels to interactive elements
-    document.querySelectorAll('button:not([aria-label])').forEach(button => {
+    document.querySelectorAll("button:not([aria-label])").forEach((button) => {
       if (!button.textContent.trim()) {
-        button.setAttribute('aria-label', 'Button');
+        button.setAttribute("aria-label", "Button");
       }
     });
 
@@ -1020,24 +1038,31 @@ class Accessibility {
    * Add semantic landmarks
    */
   addLandmarks() {
-    const main = document.querySelector('main') || document.querySelector('[role="main"]');
-    if (main && !main.getAttribute('role')) {
-      main.setAttribute('role', 'main');
+    const main =
+      document.querySelector("main") || document.querySelector('[role="main"]');
+    if (main && !main.getAttribute("role")) {
+      main.setAttribute("role", "main");
     }
 
-    const nav = document.querySelector('nav') || document.querySelector('[role="navigation"]');
-    if (nav && !nav.getAttribute('role')) {
-      nav.setAttribute('role', 'navigation');
+    const nav =
+      document.querySelector("nav") ||
+      document.querySelector('[role="navigation"]');
+    if (nav && !nav.getAttribute("role")) {
+      nav.setAttribute("role", "navigation");
     }
 
-    const header = document.querySelector('header') || document.querySelector('[role="banner"]');
-    if (header && !header.getAttribute('role')) {
-      header.setAttribute('role', 'banner');
+    const header =
+      document.querySelector("header") ||
+      document.querySelector('[role="banner"]');
+    if (header && !header.getAttribute("role")) {
+      header.setAttribute("role", "banner");
     }
 
-    const footer = document.querySelector('footer') || document.querySelector('[role="contentinfo"]');
-    if (footer && !footer.getAttribute('role')) {
-      footer.setAttribute('role', 'contentinfo');
+    const footer =
+      document.querySelector("footer") ||
+      document.querySelector('[role="contentinfo"]');
+    if (footer && !footer.getAttribute("role")) {
+      footer.setAttribute("role", "contentinfo");
     }
   }
 
@@ -1045,10 +1070,10 @@ class Accessibility {
    * Add live regions for screen readers
    */
   addLiveRegions() {
-    const liveRegion = document.createElement('div');
-    liveRegion.setAttribute('aria-live', 'polite');
-    liveRegion.setAttribute('aria-atomic', 'true');
-    liveRegion.className = 'sr-only live-region';
+    const liveRegion = document.createElement("div");
+    liveRegion.setAttribute("aria-live", "polite");
+    liveRegion.setAttribute("aria-atomic", "true");
+    liveRegion.className = "sr-only live-region";
     document.body.appendChild(liveRegion);
 
     this.liveRegion = liveRegion;
@@ -1069,8 +1094,8 @@ class Accessibility {
    * Setup modal focus management
    */
   setupModalFocusManagement() {
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab') {
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
         const modal = document.querySelector('.modal[aria-hidden="false"]');
         if (modal) {
           this.trapFocus(e, modal);
@@ -1084,9 +1109,9 @@ class Accessibility {
    */
   trapFocus(e, modal) {
     const focusableElements = modal.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
-    
+
     const firstElement = focusableElements[0];
     const lastElement = focusableElements[focusableElements.length - 1];
 
@@ -1128,7 +1153,7 @@ class Accessibility {
       if (this.liveRegion) {
         this.liveRegion.textContent = message;
         setTimeout(() => {
-          this.liveRegion.textContent = '';
+          this.liveRegion.textContent = "";
         }, 1000);
       }
     };
@@ -1138,7 +1163,7 @@ class Accessibility {
    * Load user preferences
    */
   loadUserPreferences() {
-    const saved = localStorage.getItem('accessibility-settings');
+    const saved = localStorage.getItem("accessibility-settings");
     if (saved) {
       const preferences = JSON.parse(saved);
       this.updateSettings(preferences);
@@ -1153,15 +1178,15 @@ class Accessibility {
    */
   detectSystemPreferences() {
     // Detect reduced motion
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       this.settings.reducedMotion = true;
-      document.body.classList.add('reduced-motion');
+      document.body.classList.add("reduced-motion");
     }
 
     // Detect high contrast
-    if (window.matchMedia('(prefers-contrast: high)').matches) {
+    if (window.matchMedia("(prefers-contrast: high)").matches) {
       this.settings.highContrast = true;
-      document.body.classList.add('high-contrast');
+      document.body.classList.add("high-contrast");
     }
   }
 
@@ -1178,33 +1203,41 @@ class Accessibility {
    * Apply settings
    */
   applySettings() {
-    document.body.classList.toggle('high-contrast', this.settings.highContrast);
-    document.body.classList.toggle('large-text', this.settings.largeText);
-    document.body.classList.toggle('reduced-motion', this.settings.reducedMotion);
+    document.body.classList.toggle("high-contrast", this.settings.highContrast);
+    document.body.classList.toggle("large-text", this.settings.largeText);
+    document.body.classList.toggle(
+      "reduced-motion",
+      this.settings.reducedMotion,
+    );
   }
 
   /**
    * Save settings
    */
   saveSettings() {
-    localStorage.setItem('accessibility-settings', JSON.stringify(this.settings));
+    localStorage.setItem(
+      "accessibility-settings",
+      JSON.stringify(this.settings),
+    );
   }
 
   /**
    * Close all modals
    */
   closeAllModals() {
-    document.querySelectorAll('.modal[aria-hidden="false"]').forEach(modal => {
-      modal.setAttribute('aria-hidden', 'true');
-      modal.style.display = 'none';
-    });
+    document
+      .querySelectorAll('.modal[aria-hidden="false"]')
+      .forEach((modal) => {
+        modal.setAttribute("aria-hidden", "true");
+        modal.style.display = "none";
+      });
   }
 
   getStatus() {
     return {
       active: true,
       settings: this.settings,
-      screenReaderActive: this.settings.screenReader
+      screenReaderActive: this.settings.screenReader,
     };
   }
 }
@@ -1218,7 +1251,7 @@ class PerformanceOptimizer {
       firstContentfulPaint: 0,
       largestContentfulPaint: 0,
       firstInputDelay: 0,
-      cumulativeLayoutShift: 0
+      cumulativeLayoutShift: 0,
     };
     this.observers = [];
   }
@@ -1227,21 +1260,21 @@ class PerformanceOptimizer {
     this.setupPerformanceMonitoring();
     this.setupResourceOptimization();
     this.setupImageOptimization();
-    console.log('Performance Optimizer initialized');
+    console.log("Performance Optimizer initialized");
   }
 
   /**
    * Setup performance monitoring
    */
   setupPerformanceMonitoring() {
-    if ('PerformanceObserver' in window) {
+    if ("PerformanceObserver" in window) {
       this.observeWebVitals();
       this.observeResourceTiming();
       this.observeLongTasks();
     }
 
     // Monitor page load
-    window.addEventListener('load', () => {
+    window.addEventListener("load", () => {
       this.recordPageLoadMetrics();
     });
   }
@@ -1253,12 +1286,12 @@ class PerformanceOptimizer {
     // First Contentful Paint
     const fcpObserver = new PerformanceObserver((list) => {
       const entries = list.getEntries();
-      const fcp = entries[entry => entry.name === 'first-contentful-paint'];
+      const fcp = entries[(entry) => entry.name === "first-contentful-paint"];
       if (fcp) {
         this.metrics.firstContentfulPaint = fcp.startTime;
       }
     });
-    fcpObserver.observe({ entryTypes: ['paint'] });
+    fcpObserver.observe({ entryTypes: ["paint"] });
     this.observers.push(fcpObserver);
 
     // Largest Contentful Paint
@@ -1267,7 +1300,7 @@ class PerformanceOptimizer {
       const lcp = entries[entries.length - 1];
       this.metrics.largestContentfulPaint = lcp.startTime;
     });
-    lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
+    lcpObserver.observe({ entryTypes: ["largest-contentful-paint"] });
     this.observers.push(lcpObserver);
 
     // First Input Delay
@@ -1276,20 +1309,20 @@ class PerformanceOptimizer {
       const fid = entries[0];
       this.metrics.firstInputDelay = fid.processingStart - fid.startTime;
     });
-    fidObserver.observe({ entryTypes: ['first-input'] });
+    fidObserver.observe({ entryTypes: ["first-input"] });
     this.observers.push(fidObserver);
 
     // Cumulative Layout Shift
     const clsObserver = new PerformanceObserver((list) => {
       let clsValue = 0;
-      list.getEntries().forEach(entry => {
+      list.getEntries().forEach((entry) => {
         if (!entry.hadRecentInput) {
           clsValue += entry.value;
         }
       });
       this.metrics.cumulativeLayoutShift += clsValue;
     });
-    clsObserver.observe({ entryTypes: ['layout-shift'] });
+    clsObserver.observe({ entryTypes: ["layout-shift"] });
     this.observers.push(clsObserver);
   }
 
@@ -1298,11 +1331,11 @@ class PerformanceOptimizer {
    */
   observeResourceTiming() {
     const resourceObserver = new PerformanceObserver((list) => {
-      list.getEntries().forEach(entry => {
+      list.getEntries().forEach((entry) => {
         this.analyzeResourcePerformance(entry);
       });
     });
-    resourceObserver.observe({ entryTypes: ['resource'] });
+    resourceObserver.observe({ entryTypes: ["resource"] });
     this.observers.push(resourceObserver);
   }
 
@@ -1311,14 +1344,14 @@ class PerformanceOptimizer {
    */
   observeLongTasks() {
     const longTaskObserver = new PerformanceObserver((list) => {
-      list.getEntries().forEach(entry => {
-        console.warn('Long task detected:', {
+      list.getEntries().forEach((entry) => {
+        console.warn("Long task detected:", {
           duration: entry.duration,
-          startTime: entry.startTime
+          startTime: entry.startTime,
         });
       });
     });
-    longTaskObserver.observe({ entryTypes: ['longtask'] });
+    longTaskObserver.observe({ entryTypes: ["longtask"] });
     this.observers.push(longTaskObserver);
   }
 
@@ -1326,7 +1359,7 @@ class PerformanceOptimizer {
    * Record page load metrics
    */
   recordPageLoadMetrics() {
-    if ('performance' in window && 'timing' in performance) {
+    if ("performance" in window && "timing" in performance) {
       const timing = performance.timing;
       const pageLoad = {
         dns: timing.domainLookupEnd - timing.domainLookupStart,
@@ -1334,10 +1367,10 @@ class PerformanceOptimizer {
         request: timing.responseStart - timing.requestStart,
         response: timing.responseEnd - timing.responseStart,
         dom: timing.domContentLoadedEventStart - timing.navigationStart,
-        load: timing.loadEventEnd - timing.navigationStart
+        load: timing.loadEventEnd - timing.navigationStart,
       };
 
-      console.log('Page load metrics:', pageLoad);
+      console.log("Page load metrics:", pageLoad);
     }
   }
 
@@ -1346,10 +1379,10 @@ class PerformanceOptimizer {
    */
   analyzeResourcePerformance(entry) {
     if (entry.duration > 1000) {
-      console.warn('Slow resource detected:', {
+      console.warn("Slow resource detected:", {
         name: entry.name,
         duration: entry.duration,
-        size: entry.transferSize
+        size: entry.transferSize,
       });
     }
   }
@@ -1373,24 +1406,24 @@ class PerformanceOptimizer {
    */
   preloadCriticalResources() {
     const criticalResources = [
-      '/fonts/main.woff2',
-      '/css/critical.css',
-      '/js/critical.js'
+      "/fonts/main.woff2",
+      "/css/critical.css",
+      "/js/critical.js",
     ];
 
-    criticalResources.forEach(resource => {
-      const link = document.createElement('link');
-      link.rel = 'preload';
+    criticalResources.forEach((resource) => {
+      const link = document.createElement("link");
+      link.rel = "preload";
       link.href = resource;
-      
-      if (resource.endsWith('.woff2')) {
-        link.as = 'font';
-        link.type = 'font/woff2';
-        link.crossOrigin = 'anonymous';
-      } else if (resource.endsWith('.css')) {
-        link.as = 'style';
-      } else if (resource.endsWith('.js')) {
-        link.as = 'script';
+
+      if (resource.endsWith(".woff2")) {
+        link.as = "font";
+        link.type = "font/woff2";
+        link.crossOrigin = "anonymous";
+      } else if (resource.endsWith(".css")) {
+        link.as = "style";
+      } else if (resource.endsWith(".js")) {
+        link.as = "script";
       }
 
       document.head.appendChild(link);
@@ -1402,7 +1435,7 @@ class PerformanceOptimizer {
    */
   optimizeFontLoading() {
     // Add font-display: swap to existing fonts
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       @font-face {
         font-display: swap;
@@ -1416,17 +1449,15 @@ class PerformanceOptimizer {
    */
   optimizeCSSLoading() {
     // Load non-critical CSS asynchronously
-    const nonCriticalCSS = [
-      '/css/non-critical.css'
-    ];
+    const nonCriticalCSS = ["/css/non-critical.css"];
 
-    nonCriticalCSS.forEach(cssFile => {
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'style';
+    nonCriticalCSS.forEach((cssFile) => {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "style";
       link.href = cssFile;
-      link.onload = function() {
-        this.rel = 'stylesheet';
+      link.onload = function () {
+        this.rel = "stylesheet";
       };
       document.head.appendChild(link);
     });
@@ -1437,9 +1468,9 @@ class PerformanceOptimizer {
    */
   setupImageOptimization() {
     // Add lazy loading to images
-    document.querySelectorAll('img').forEach(img => {
+    document.querySelectorAll("img").forEach((img) => {
       if (!img.loading) {
-        img.loading = 'lazy';
+        img.loading = "lazy";
       }
     });
 
@@ -1453,29 +1484,31 @@ class PerformanceOptimizer {
    * Check WebP support
    */
   supportsWebP() {
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = 1;
     canvas.height = 1;
-    return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+    return canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0;
   }
 
   /**
    * Convert images to WebP
    */
   convertImagesToWebP() {
-    document.querySelectorAll('img[src*=".jpg"], img[src*=".png"]').forEach(img => {
-      const webpSrc = img.src.replace(/\.(jpg|jpeg|png)$/, '.webp');
-      
-      // Create a new image to test WebP support
-      const testImg = new Image();
-      testImg.onload = function() {
-        img.src = webpSrc;
-      };
-      testImg.onerror = function() {
-        // Keep original format if WebP fails
-      };
-      testImg.src = webpSrc;
-    });
+    document
+      .querySelectorAll('img[src*=".jpg"], img[src*=".png"]')
+      .forEach((img) => {
+        const webpSrc = img.src.replace(/\.(jpg|jpeg|png)$/, ".webp");
+
+        // Create a new image to test WebP support
+        const testImg = new Image();
+        testImg.onload = function () {
+          img.src = webpSrc;
+        };
+        testImg.onerror = function () {
+          // Keep original format if WebP fails
+        };
+        testImg.src = webpSrc;
+      });
   }
 
   /**
@@ -1484,14 +1517,14 @@ class PerformanceOptimizer {
   getMetrics() {
     return {
       ...this.metrics,
-      observersActive: this.observers.length
+      observersActive: this.observers.length,
     };
   }
 
   getStatus() {
     return {
       active: true,
-      metrics: this.getMetrics()
+      metrics: this.getMetrics(),
     };
   }
 }
