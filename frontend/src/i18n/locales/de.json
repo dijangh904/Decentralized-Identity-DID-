@@ -1,0 +1,128 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "credentials": "Anmeldedaten",
+    "createDid": "DID Erstellen",
+    "resolveDid": "DID Auflösen",
+    "connectWallet": "Wallet Verbinden",
+    "account": "Konto",
+    "scanner": "Scanner",
+    "contracts": "Verträge"
+  },
+  "dashboard": {
+    "title": "Stellar DID Platform Dashboard",
+    "subtitle": "Überblick über Ihr dezentrales Identitätsökosystem",
+    "stats": {
+      "totalDids": "Gesamte DIDs",
+      "totalCredentials": "Gesamte Anmeldedaten",
+      "activeUsers": "Aktive Benutzer",
+      "network": "Netzwerk",
+      "contractAddress": "Vertragsadresse",
+      "contractVersion": "Vertragsversion",
+      "uptime": "Verfügbarkeit",
+      "avgResponseTime": "Durchschn. Antwortzeit",
+      "lastRefreshed": "Zuletzt Aktualisiert",
+      "mockData": "Testdaten"
+    },
+    "recentActivity": "Letzte Aktivität",
+    "networkStats": "Netzwerkstatistiken"
+  },
+  "credentials": {
+    "title": "Verifizierbare Anmeldedaten",
+    "subtitle": "Verwalten, ausstellen und verifizieren Sie verifizierbare Anmeldedaten auf der Stellar Blockchain",
+    "browseCredentials": "Anmeldedaten Durchsuchen",
+    "issueVerify": "Ausstellen & Verifizieren",
+    "total": "Anmeldedaten",
+    "refresh": "Aktualisieren",
+    "listView": "Listenansicht",
+    "virtualScroll": "Virtueller Scroll",
+    "filters": "Filter",
+    "clearAll": "Alle Löschen",
+    "search": "Suchen",
+    "searchPlaceholder": "Suchen nach ID, Aussteller oder Subjekt...",
+    "type": "Typ",
+    "status": "Status",
+    "expiration": "Ablauf",
+    "sortBy": "Sortieren Nach",
+    "allTypes": "Alle Typen",
+    "allStatus": "Alle Status",
+    "valid": "Gültig",
+    "revoked": "Widerrufen",
+    "notExpired": "Nicht Abgelaufen",
+    "expired": "Abgelaufen",
+    "issuedDate": "Ausstellungsdatum",
+    "expirationDate": "Ablaufdatum",
+    "issuer": "Aussteller",
+    "subject": "Subjekt",
+    "issued": "Ausgestellt",
+    "expires": "Läuft ab",
+    "noCredentialsFound": "Keine Anmeldedaten gefunden, die Ihren Kriterien entsprechen.",
+    "rowsPerPage": "Zeilen pro Seite",
+    "showing": "Zeige",
+    "of": "von",
+    "virtualScrollingEnabled": "Virtuelles Scrollen für optimale Leistung aktiviert",
+    "switchToListView": "Zur Listenansicht wechseln"
+  },
+  "credentialManager": {
+    "issueCredential": "Anmeldedaten Ausstellen",
+    "verifyCredential": "Anmeldedaten Verifizieren",
+    "credentialTemplates": "Anmeldedaten-Vorlagen",
+    "templateClickToUse": "Klicken Sie, um eine Vorlage zu verwenden:",
+    "issuerDid": "Aussteller-DID",
+    "subjectDid": "Subjekt-DID",
+    "credentialType": "Anmeldedaten-Typ",
+    "claims": "Ansprüche",
+    "claimsPlaceholder": "{\"degree\": \"Bachelor of Science\", \"university\": \"Beispiel Universität\"}",
+    "issueCredentialBtn": "Anmeldedaten Ausstellen",
+    "verifyCredentialBtn": "Anmeldedaten Verifizieren",
+    "credentialId": "Anmeldedaten-ID",
+    "credentialIdPlaceholder": "Anmeldedaten-ID zur Verifizierung eingeben",
+    "scanQrCode": "QR-Code Scannen",
+    "credentialIssued": "Anmeldedaten Ausgestellt",
+    "verificationResult": "Verifizierungsergebnis",
+    "copyCredentialId": "Anmeldedaten-ID Kopieren",
+    "credentialIdCopied": "Anmeldedaten-ID in die Zwischenablage kopiert!"
+  },
+  "forms": {
+    "required": "Dieses Feld ist erforderlich",
+    "invalidDidFormat": "Ungültiges DID-Format",
+    "invalidJson": "Ungültiges JSON-Format"
+  },
+  "types": {
+    "universityDegree": "Universitätsabschluss",
+    "professionalLicense": "Berufslizenz",
+    "ageVerification": "Altersverifizierung",
+    "employmentVerification": "Beschäftigungsverifizierung"
+  },
+  "status": {
+    "valid": "Gültig",
+    "revoked": "Widerrufen",
+    "expired": "Abgelaufen"
+  },
+  "actions": {
+    "viewDetails": "Details Ansehen",
+    "copyId": "ID Kopieren",
+    "refresh": "Aktualisieren",
+    "clear": "Löschen",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "issue": "Ausstellen",
+    "verify": "Verifizieren",
+    "scan": "Scannen"
+  },
+  "messages": {
+    "credentialIssuedSuccess": "Anmeldedaten erfolgreich ausgestellt!",
+    "credentialVerifiedSuccess": "Anmeldedaten erfolgreich verifiziert!",
+    "credentialIdCopied": "Anmeldedaten-ID in die Zwischenablage kopiert!",
+    "errorOccurred": "Ein Fehler ist aufgetreten",
+    "loading": "Laden...",
+    "noDataAvailable": "Keine Daten verfügbar"
+  },
+  "errors": {
+    "networkError": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
+    "validationError": "Validierungsfehler. Bitte überprüfen Sie Ihre Eingabe.",
+    "notFound": "Ressource nicht gefunden.",
+    "unauthorized": "Nicht autorisierter Zugriff.",
+    "serverError": "Serverfehler. Bitte versuchen Sie es später erneut."
+  }
+}

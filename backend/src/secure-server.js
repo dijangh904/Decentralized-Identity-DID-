@@ -2,9 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const MetricsMiddleware = require('./middleware/metricsMiddleware');
 require('dotenv').config();
 
 const app = express();
+
+// Initialize metrics middleware
+const metricsMiddleware = new MetricsMiddleware();
+
+// Metrics tracking middleware (must be before other middleware)
+app.use(metricsMiddleware.requestTracker());
 
 // Security middleware
 app.use(helmet({
@@ -53,17 +60,17 @@ app.get('/api/config', (req, res) => {
   res.json(publicConfig);
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-  });
-});
+// Health check endpoint with metrics
+app.get('/health', metricsMiddleware.healthWithMetrics());
+
+// Prometheus metrics endpoint
+app.get('/metrics', metricsMiddleware.metricsEndpoint());
 
 // API routes
 app.use('/api/v1', require('./routes'));
+
+// Error tracking middleware
+app.use(metricsMiddleware.errorTracker());
 
 // Error handling middleware
 app.use((err, req, res, next) => {

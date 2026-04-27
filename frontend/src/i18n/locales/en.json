@@ -1,0 +1,128 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "credentials": "Credentials",
+    "createDid": "Create DID",
+    "resolveDid": "Resolve DID",
+    "connectWallet": "Connect Wallet",
+    "account": "Account",
+    "scanner": "Scanner",
+    "contracts": "Contracts"
+  },
+  "dashboard": {
+    "title": "Stellar DID Platform Dashboard",
+    "subtitle": "Overview of your decentralized identity ecosystem",
+    "stats": {
+      "totalDids": "Total DIDs",
+      "totalCredentials": "Total Credentials",
+      "activeUsers": "Active Users",
+      "network": "Network",
+      "contractAddress": "Contract Address",
+      "contractVersion": "Contract Version",
+      "uptime": "Uptime",
+      "avgResponseTime": "Avg Response Time",
+      "lastRefreshed": "Last Refreshed",
+      "mockData": "Mock Data"
+    },
+    "recentActivity": "Recent Activity",
+    "networkStats": "Network Statistics"
+  },
+  "credentials": {
+    "title": "Verifiable Credentials",
+    "subtitle": "Manage, issue, and verify verifiable credentials on the Stellar blockchain",
+    "browseCredentials": "Browse Credentials",
+    "issueVerify": "Issue & Verify",
+    "total": "Credentials",
+    "refresh": "Refresh",
+    "listView": "List View",
+    "virtualScroll": "Virtual Scroll",
+    "filters": "Filters",
+    "clearAll": "Clear All",
+    "search": "Search",
+    "searchPlaceholder": "Search by ID, issuer, or subject...",
+    "type": "Type",
+    "status": "Status",
+    "expiration": "Expiration",
+    "sortBy": "Sort By",
+    "allTypes": "All Types",
+    "allStatus": "All Status",
+    "valid": "Valid",
+    "revoked": "Revoked",
+    "notExpired": "Not Expired",
+    "expired": "Expired",
+    "issuedDate": "Issued Date",
+    "expirationDate": "Expiration Date",
+    "issuer": "Issuer",
+    "subject": "Subject",
+    "issued": "Issued",
+    "expires": "Expires",
+    "noCredentialsFound": "No credentials found matching your criteria.",
+    "rowsPerPage": "Rows per page",
+    "showing": "Showing",
+    "of": "of",
+    "virtualScrollingEnabled": "Virtual scrolling enabled for optimal performance",
+    "switchToListView": "Switch to List View"
+  },
+  "credentialManager": {
+    "issueCredential": "Issue Credential",
+    "verifyCredential": "Verify Credential",
+    "credentialTemplates": "Credential Templates",
+    "templateClickToUse": "Click to use a template:",
+    "issuerDid": "Issuer DID",
+    "subjectDid": "Subject DID",
+    "credentialType": "Credential Type",
+    "claims": "Claims",
+    "claimsPlaceholder": "{\"degree\": \"Bachelor of Science\", \"university\": \"Example University\"}",
+    "issueCredentialBtn": "Issue Credential",
+    "verifyCredentialBtn": "Verify Credential",
+    "credentialId": "Credential ID",
+    "credentialIdPlaceholder": "Enter credential ID to verify",
+    "scanQrCode": "Scan QR Code",
+    "credentialIssued": "Credential Issued",
+    "verificationResult": "Verification Result",
+    "copyCredentialId": "Copy Credential ID",
+    "credentialIdCopied": "Credential ID copied to clipboard!"
+  },
+  "forms": {
+    "required": "This field is required",
+    "invalidDidFormat": "Invalid DID format",
+    "invalidJson": "Invalid JSON format"
+  },
+  "types": {
+    "universityDegree": "University Degree",
+    "professionalLicense": "Professional License",
+    "ageVerification": "Age Verification",
+    "employmentVerification": "Employment Verification"
+  },
+  "status": {
+    "valid": "Valid",
+    "revoked": "Revoked",
+    "expired": "Expired"
+  },
+  "actions": {
+    "viewDetails": "View Details",
+    "copyId": "Copy ID",
+    "refresh": "Refresh",
+    "clear": "Clear",
+    "search": "Search",
+    "filter": "Filter",
+    "issue": "Issue",
+    "verify": "Verify",
+    "scan": "Scan"
+  },
+  "messages": {
+    "credentialIssuedSuccess": "Credential issued successfully!",
+    "credentialVerifiedSuccess": "Credential verified successfully!",
+    "credentialIdCopied": "Credential ID copied to clipboard!",
+    "errorOccurred": "An error occurred",
+    "loading": "Loading...",
+    "noDataAvailable": "No data available"
+  },
+  "errors": {
+    "networkError": "Network error. Please try again.",
+    "validationError": "Validation error. Please check your input.",
+    "notFound": "Resource not found.",
+    "unauthorized": "Unauthorized access.",
+    "serverError": "Server error. Please try again later."
+  }
+}

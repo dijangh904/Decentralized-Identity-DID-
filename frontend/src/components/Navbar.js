@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   AppBar,
   Box,
@@ -11,17 +12,7 @@ import {
 } from "@mui/material";
 import { QrCodeScanner, AccountBalanceWallet } from "@mui/icons-material";
 import { useWallet } from "../contexts/WalletContext";
-
-const navItems = [
-  { label: "Dashboard", to: "/" },
-  { label: "Credentials", to: "/credentials" },
-  { label: "Create DID", to: "/create-did" },
-  { label: "Resolve DID", to: "/resolve-did" },
-  { label: "Performance Test", to: "/performance-test" },
-  { label: "Connect Wallet", to: "/connect" },
-  { label: "QR Tools", to: "/scanner" },
-  { label: "Account", to: "/account" },
-];
+import LanguageSelector from "./LanguageSelector";
 
 const linkSx = {
   color: "inherit",
@@ -32,7 +23,19 @@ const linkSx = {
 };
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const { wallet, isConnected } = useWallet();
+
+  const navItems = [
+    { label: t("navigation.dashboard"), to: "/" },
+    { label: t("navigation.credentials"), to: "/credentials" },
+    { label: t("navigation.createDid"), to: "/create-did" },
+    { label: t("navigation.resolveDid"), to: "/resolve-did" },
+    { label: "Performance Test", to: "/performance-test" },
+    { label: t("navigation.connectWallet"), to: "/connect" },
+    { label: t("navigation.scanner"), to: "/scanner" },
+    { label: t("navigation.account"), to: "/account" },
+  ];
 
   return (
     <AppBar
@@ -99,6 +102,8 @@ const Navbar = () => {
               </Button>
             ))}
           </Stack>
+
+          <LanguageSelector />
 
           <Chip
             icon={<AccountBalanceWallet />}

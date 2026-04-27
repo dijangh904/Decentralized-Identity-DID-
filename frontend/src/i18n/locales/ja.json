@@ -1,0 +1,128 @@
+{
+  "navigation": {
+    "dashboard": "ダッシュボード",
+    "credentials": "認証情報",
+    "createDid": "DID作成",
+    "resolveDid": "DID解決",
+    "connectWallet": "ウォレット接続",
+    "account": "アカウント",
+    "scanner": "スキャナー",
+    "contracts": "契約"
+  },
+  "dashboard": {
+    "title": "Stellar DIDプラットフォームダッシュボード",
+    "subtitle": "分散型アイデンティティエコシステムの概要",
+    "stats": {
+      "totalDids": "DID総数",
+      "totalCredentials": "認証情報総数",
+      "activeUsers": "アクティブユーザー",
+      "network": "ネットワーク",
+      "contractAddress": "契約アドレス",
+      "contractVersion": "契約バージョン",
+      "uptime": "稼働時間",
+      "avgResponseTime": "平均応答時間",
+      "lastRefreshed": "最終更新",
+      "mockData": "モックデータ"
+    },
+    "recentActivity": "最近の活動",
+    "networkStats": "ネットワーク統計"
+  },
+  "credentials": {
+    "title": "検証可能な認証情報",
+    "subtitle": "Stellarブロックチェーンで検証可能な認証情報を管理、発行、検証",
+    "browseCredentials": "認証情報を閲覧",
+    "issueVerify": "発行と検証",
+    "total": "認証情報",
+    "refresh": "更新",
+    "listView": "リストビュー",
+    "virtualScroll": "仮想スクロール",
+    "filters": "フィルター",
+    "clearAll": "すべてクリア",
+    "search": "検索",
+    "searchPlaceholder": "ID、発行者、または主題で検索...",
+    "type": "タイプ",
+    "status": "ステータス",
+    "expiration": "有効期限",
+    "sortBy": "並び替え",
+    "allTypes": "すべてのタイプ",
+    "allStatus": "すべてのステータス",
+    "valid": "有効",
+    "revoked": "取り消し済み",
+    "notExpired": "有効期限内",
+    "expired": "期限切れ",
+    "issuedDate": "発行日",
+    "expirationDate": "有効期限日",
+    "issuer": "発行者",
+    "subject": "主題",
+    "issued": "発行済み",
+    "expires": "有効期限",
+    "noCredentialsFound": "条件に一致する認証情報が見つかりません。",
+    "rowsPerPage": "1ページあたりの行数",
+    "showing": "表示中",
+    "of": "件中",
+    "virtualScrollingEnabled": "最適なパフォーマンスのために仮想スクロールが有効です",
+    "switchToListView": "リストビューに切り替え"
+  },
+  "credentialManager": {
+    "issueCredential": "認証情報発行",
+    "verifyCredential": "認証情報検証",
+    "credentialTemplates": "認証情報テンプレート",
+    "templateClickToUse": "テンプレートを使用するにはクリック：",
+    "issuerDid": "発行者DID",
+    "subjectDid": "主題DID",
+    "credentialType": "認証情報タイプ",
+    "claims": "クレーム",
+    "claimsPlaceholder": "{\"degree\": \"学士号\", \"university\": \"例大学\"}",
+    "issueCredentialBtn": "認証情報発行",
+    "verifyCredentialBtn": "認証情報検証",
+    "credentialId": "認証情報ID",
+    "credentialIdPlaceholder": "検証する認証情報IDを入力",
+    "scanQrCode": "QRコードスキャン",
+    "credentialIssued": "認証情報発行済み",
+    "verificationResult": "検証結果",
+    "copyCredentialId": "認証情報IDをコピー",
+    "credentialIdCopied": "認証情報IDをクリップボードにコピーしました！"
+  },
+  "forms": {
+    "required": "この項目は必須です",
+    "invalidDidFormat": "無効なDID形式です",
+    "invalidJson": "無効なJSON形式です"
+  },
+  "types": {
+    "universityDegree": "大学学位",
+    "professionalLicense": "専門ライセンス",
+    "ageVerification": "年齢確認",
+    "employmentVerification": "雇用確認"
+  },
+  "status": {
+    "valid": "有効",
+    "revoked": "取り消し済み",
+    "expired": "期限切れ"
+  },
+  "actions": {
+    "viewDetails": "詳細を表示",
+    "copyId": "IDをコピー",
+    "refresh": "更新",
+    "clear": "クリア",
+    "search": "検索",
+    "filter": "フィルター",
+    "issue": "発行",
+    "verify": "検証",
+    "scan": "スキャン"
+  },
+  "messages": {
+    "credentialIssuedSuccess": "認証情報が正常に発行されました！",
+    "credentialVerifiedSuccess": "認証情報が正常に検証されました！",
+    "credentialIdCopied": "認証情報IDをクリップボードにコピーしました！",
+    "errorOccurred": "エラーが発生しました",
+    "loading": "読み込み中...",
+    "noDataAvailable": "利用可能なデータがありません"
+  },
+  "errors": {
+    "networkError": "ネットワークエラーです。もう一度お試しください。",
+    "validationError": "検証エラーです。入力を確認してください。",
+    "notFound": "リソースが見つかりません。",
+    "unauthorized": "認可されていないアクセスです。",
+    "serverError": "サーバーエラーです。後でもう一度お試しください。"
+  }
+}

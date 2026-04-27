@@ -1,0 +1,128 @@
+{
+  "navigation": {
+    "dashboard": "Tableau de Bord",
+    "credentials": "Certificats",
+    "createDid": "Créer DID",
+    "resolveDid": "Résoudre DID",
+    "connectWallet": "Connecter Portefeuille",
+    "account": "Compte",
+    "scanner": "Scanneur",
+    "contracts": "Contrats"
+  },
+  "dashboard": {
+    "title": "Tableau de Bord de la Plateforme DID Stellar",
+    "subtitle": "Aperçu de votre écosystème d'identité décentralisée",
+    "stats": {
+      "totalDids": "Total des DIDs",
+      "totalCredentials": "Total des Certificats",
+      "activeUsers": "Utilisateurs Actifs",
+      "network": "Réseau",
+      "contractAddress": "Adresse du Contrat",
+      "contractVersion": "Version du Contrat",
+      "uptime": "Temps de Fonctionnement",
+      "avgResponseTime": "Temps de Réponse Moyen",
+      "lastRefreshed": "Dernière Actualisation",
+      "mockData": "Données de Test"
+    },
+    "recentActivity": "Activité Récente",
+    "networkStats": "Statistiques du Réseau"
+  },
+  "credentials": {
+    "title": "Certificats Vérifiables",
+    "subtitle": "Gérez, émettez et vérifiez des certificats vérifiables sur la blockchain Stellar",
+    "browseCredentials": "Parcourir les Certificats",
+    "issueVerify": "Émettre et Vérifier",
+    "total": "Certificats",
+    "refresh": "Actualiser",
+    "listView": "Vue Liste",
+    "virtualScroll": "Défilement Virtuel",
+    "filters": "Filtres",
+    "clearAll": "Tout Effacer",
+    "search": "Rechercher",
+    "searchPlaceholder": "Rechercher par ID, émetteur ou sujet...",
+    "type": "Type",
+    "status": "Statut",
+    "expiration": "Expiration",
+    "sortBy": "Trier Par",
+    "allTypes": "Tous les Types",
+    "allStatus": "Tous les Statuts",
+    "valid": "Valide",
+    "revoked": "Révoqué",
+    "notExpired": "Non Expiré",
+    "expired": "Expiré",
+    "issuedDate": "Date d'Émission",
+    "expirationDate": "Date d'Expiration",
+    "issuer": "Émetteur",
+    "subject": "Sujet",
+    "issued": "Émis",
+    "expires": "Expire",
+    "noCredentialsFound": "Aucun certificat trouvé correspondant à vos critères.",
+    "rowsPerPage": "Lignes par page",
+    "showing": "Affichage de",
+    "of": "sur",
+    "virtualScrollingEnabled": "Défilement virtuel activé pour des performances optimales",
+    "switchToListView": "Basculer en Vue Liste"
+  },
+  "credentialManager": {
+    "issueCredential": "Émettre Certificat",
+    "verifyCredential": "Vérifier Certificat",
+    "credentialTemplates": "Modèles de Certificat",
+    "templateClickToUse": "Cliquez pour utiliser un modèle :",
+    "issuerDid": "DID de l'Émetteur",
+    "subjectDid": "DID du Sujet",
+    "credentialType": "Type de Certificat",
+    "claims": "Déclarations",
+    "claimsPlaceholder": "{\"degree\": \"Licence\", \"university\": \"Université Exemple\"}",
+    "issueCredentialBtn": "Émettre Certificat",
+    "verifyCredentialBtn": "Vérifier Certificat",
+    "credentialId": "ID du Certificat",
+    "credentialIdPlaceholder": "Entrez l'ID du certificat à vérifier",
+    "scanQrCode": "Scanner Code QR",
+    "credentialIssued": "Certificat Émis",
+    "verificationResult": "Résultat de Vérification",
+    "copyCredentialId": "Copier l'ID du Certificat",
+    "credentialIdCopied": "ID de certificat copié dans le presse-papiers !"
+  },
+  "forms": {
+    "required": "Ce champ est requis",
+    "invalidDidFormat": "Format DID invalide",
+    "invalidJson": "Format JSON invalide"
+  },
+  "types": {
+    "universityDegree": "Diplôme Universitaire",
+    "professionalLicense": "Licence Professionnelle",
+    "ageVerification": "Vérification d'Âge",
+    "employmentVerification": "Vérification d'Emploi"
+  },
+  "status": {
+    "valid": "Valide",
+    "revoked": "Révoqué",
+    "expired": "Expiré"
+  },
+  "actions": {
+    "viewDetails": "Voir les Détails",
+    "copyId": "Copier l'ID",
+    "refresh": "Actualiser",
+    "clear": "Effacer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "issue": "Émettre",
+    "verify": "Vérifier",
+    "scan": "Scanner"
+  },
+  "messages": {
+    "credentialIssuedSuccess": "Certificat émis avec succès !",
+    "credentialVerifiedSuccess": "Certificat vérifié avec succès !",
+    "credentialIdCopied": "ID de certificat copié dans le presse-papiers !",
+    "errorOccurred": "Une erreur s'est produite",
+    "loading": "Chargement...",
+    "noDataAvailable": "Aucune donnée disponible"
+  },
+  "errors": {
+    "networkError": "Erreur réseau. Veuillez réessayer.",
+    "validationError": "Erreur de validation. Veuillez vérifier votre saisie.",
+    "notFound": "Ressource non trouvée.",
+    "unauthorized": "Accès non autorisé.",
+    "serverError": "Erreur serveur. Veuillez réessayer plus tard."
+  }
+}
