@@ -1,6 +1,7 @@
 const { Server, Networks, TransactionBuilder, Operation, Asset } = require('stellar-sdk');
 const { logger } = require('../middleware');
 const redis = require('../utils/redis');
+const { blockchainInteractionQueue } = require('../config/queue');
 
 // Custom error classes for better error handling
 class TransactionFailedError extends Error {
@@ -41,14 +42,14 @@ class StellarService {
       // Try cache first
       const cacheKey = `${this.cachePrefix}account:${address}`;
       const cached = await redis.get(cacheKey);
-      
+
       if (cached) {
         return JSON.parse(cached);
       }
 
       // Fetch from Stellar network
       const account = await this.server.loadAccount(address);
-      
+
       const accountData = {
         address: account.account_id(),
         publicKey: account.account_id(),
@@ -73,7 +74,7 @@ class StellarService {
 
       // Cache for 30 seconds
       await redis.setex(cacheKey, 30, JSON.stringify(accountData));
-      
+
       return accountData;
     } catch (error) {
       logger.error('Error fetching Stellar account:', error);
@@ -89,10 +90,10 @@ class StellarService {
       // This is a simplified implementation
       // In production, you might want to maintain a database of known accounts
       const accounts = [];
-      
+
       // For demonstration, we'll return empty array
       // You would implement actual account discovery logic here
-      
+
       return accounts;
     } catch (error) {
       logger.error('Error fetching Stellar accounts:', error);
@@ -105,14 +106,14 @@ class StellarService {
       // Try cache first
       const cacheKey = `${this.cachePrefix}transaction:${hash}`;
       const cached = await redis.get(cacheKey);
-      
+
       if (cached) {
         return JSON.parse(cached);
       }
 
       // Fetch from Stellar network
       const transaction = await this.server.transactions().transaction(hash);
-      
+
       const transactionData = {
         id: transaction.id,
         hash: transaction.hash,
@@ -132,7 +133,7 @@ class StellarService {
 
       // Cache for 5 minutes
       await redis.setex(cacheKey, 300, JSON.stringify(transactionData));
-      
+
       return transactionData;
     } catch (error) {
       logger.error('Error fetching Stellar transaction:', error);
@@ -146,30 +147,30 @@ class StellarService {
       const { limit = 10, offset = 0, sortBy = 'created_at', sortOrder = 'desc' } = options;
 
       let builder = this.server.transactions();
-      
+
       if (sourceAccount) {
         builder = builder.forAccount(sourceAccount);
       }
-      
+
       if (limit) {
         builder = builder.limit(limit);
       }
-      
+
       if (offset) {
         builder = builder.cursor(offset.toString());
       }
-      
+
       if (sortOrder === 'asc') {
         builder = builder.order('asc');
       }
 
       const transactions = await builder.call();
-      
+
       let filteredTransactions = transactions.records;
-      
+
       // Filter by status if specified
       if (status) {
-        filteredTransactions = filteredTransactions.filter(tx => 
+        filteredTransactions = filteredTransactions.filter(tx =>
           this.getTransactionStatus(tx) === status
         );
       }
@@ -199,7 +200,7 @@ class StellarService {
   async getTransactionCount(filters = {}) {
     try {
       const { sourceAccount, status } = filters;
-      
+
       // This is a simplified implementation
       // In production, you would maintain a database of transaction counts
       return 0;
@@ -212,10 +213,10 @@ class StellarService {
   async createTransaction(transactionData) {
     try {
       const { sourceAccount, operations, memo, fee = 100 } = transactionData;
-      
+
       // Load source account
       const account = await this.server.loadAccount(sourceAccount);
-      
+
       // Build transaction
       const transaction = new TransactionBuilder(account, {
         networkPassphrase: this.network,
@@ -256,7 +257,7 @@ class StellarService {
 
       // Build the transaction
       const builtTransaction = transaction.setTimeout(30).build();
-      
+
       // Return transaction details without signing
       return {
         id: `pending_${Date.now()}`,
@@ -281,35 +282,43 @@ class StellarService {
     }
   }
 
-  async submitTransaction(transactionXDR) {
+  async submitTransactionAsync(transactionXDR) {
     try {
-      // Submit transaction to Stellar network
-      const result = await this.server.submitTransaction(transactionXDR);
-      
-      const transactionData = {
-        id: result.id,
-        hash: result.hash,
-        sourceAccount: result.source_account,
-        fee: parseInt(result.fee_charged),
-        memo: result.memo,
-        operations: result.operations.map(op => ({
-          id: op.id,
-          type: op.type,
-          sourceAccount: op.source_account,
-          details: op
-        })),
-        createdAt: new Date(result.created_at),
-        successful: result.successful,
-        status: result.successful ? 'SUCCESS' : 'FAILED'
+      const job = await blockchainInteractionQueue.add('submit-stellar-transaction', { transactionXDR }, {
+        priority: 2,
+        removeOnComplete: false
+      });
+
+      logger.info('Stellar transaction submission job queued:', { jobId: job.id });
+
+      return {
+        jobId: job.id,
+        status: 'queued',
+        message: 'Transaction submission queued for processing'
       };
-
-      // Publish to subscription channel
-      await this.publishTransactionEvent(this.subscriptionChannels.TRANSACTION_CREATED, transactionData);
-
-      return transactionData;
     } catch (error) {
-      logger.error('Error submitting Stellar transaction:', error);
-      throw this.handleStellarError(error, 'Failed to submit Stellar transaction');
+      logger.error('Error queuing Stellar transaction submission:', error);
+      throw error;
+    }
+  }
+
+  async getAccountAsync(address) {
+    try {
+      const job = await blockchainInteractionQueue.add('fetch-stellar-account', { address }, {
+        priority: 3,
+        removeOnComplete: false
+      });
+
+      logger.info('Stellar account fetch job queued:', { jobId: job.id, address });
+
+      return {
+        jobId: job.id,
+        status: 'queued',
+        message: 'Account fetch queued for processing'
+      };
+    } catch (error) {
+      logger.error('Error queuing Stellar account fetch:', error);
+      throw error;
     }
   }
 
@@ -340,7 +349,7 @@ class StellarService {
         const channel = sourceAccount
           ? `${this.subscriptionChannels.TRANSACTION_CREATED}:${sourceAccount}`
           : this.subscriptionChannels.TRANSACTION_CREATED;
-        
+
         logger.info(`Subscribed to transaction created events for account: ${sourceAccount || 'all'}`);
       }
     };
@@ -352,7 +361,7 @@ class StellarService {
         const channel = hash
           ? `${this.subscriptionChannels.TRANSACTION_UPDATED}:${hash}`
           : this.subscriptionChannels.TRANSACTION_UPDATED;
-        
+
         logger.info(`Subscribed to transaction updated events for hash: ${hash || 'all'}`);
       }
     };
@@ -404,41 +413,41 @@ class StellarService {
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data || {};
-      
+
       if (status === 404) {
         return new AccountNotFoundError('Account not found on the Stellar network');
       }
-      
+
       if (status === 400 || status === 403 || status === 504) {
         let errorMsg = defaultMessage;
-        
+
         if (data.extras && data.extras.result_codes) {
           const codes = data.extras.result_codes;
-          
+
           if (codes.transaction === 'tx_bad_seq') {
             errorMsg = 'bad_sequence: Transaction has a bad sequence number';
           } else if (codes.transaction === 'tx_insufficient_balance' || (codes.operations && codes.operations.includes('op_underfunded'))) {
             errorMsg = 'insufficient balance to complete this operation';
           } else {
-             let messages = [];
-             if (data.title) messages.push(data.title);
-             if (data.detail) messages.push(data.detail);
-             let codesStr = [];
-             if (codes.transaction) codesStr.push(`Transaction: ${codes.transaction}`);
-             if (codes.operations && codes.operations.length > 0) {
-               codesStr.push(`Operations: ${codes.operations.join(', ')}`);
-             }
-             if (codesStr.length > 0) {
-               messages.push(`Result Codes: [${codesStr.join(' | ')}]`);
-             }
-             if (messages.length > 0) {
-               errorMsg = messages.join('. ');
-             }
+            let messages = [];
+            if (data.title) messages.push(data.title);
+            if (data.detail) messages.push(data.detail);
+            let codesStr = [];
+            if (codes.transaction) codesStr.push(`Transaction: ${codes.transaction}`);
+            if (codes.operations && codes.operations.length > 0) {
+              codesStr.push(`Operations: ${codes.operations.join(', ')}`);
+            }
+            if (codesStr.length > 0) {
+              messages.push(`Result Codes: [${codesStr.join(' | ')}]`);
+            }
+            if (messages.length > 0) {
+              errorMsg = messages.join('. ');
+            }
           }
         }
         return new TransactionFailedError(errorMsg);
       }
-      
+
       if (status >= 500) {
         return new NetworkError('Stellar network is currently experiencing issues');
       }

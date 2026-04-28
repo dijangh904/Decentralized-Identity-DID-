@@ -5,6 +5,9 @@ const rateLimit = require('express-rate-limit');
 const MetricsMiddleware = require('./middleware/metricsMiddleware');
 require('dotenv').config();
 
+// Initialize job queue workers
+require('./workers');
+
 const app = express();
 
 // Initialize metrics middleware
@@ -56,7 +59,7 @@ app.get('/api/config', (req, res) => {
     ENABLE_FREIGHTER: process.env.ENABLE_FREIGHTER !== 'false',
     ENABLE_ADVANCED_FEATURES: process.env.ENABLE_ADVANCED_FEATURES !== 'false',
   };
-  
+
   res.json(publicConfig);
 });
 

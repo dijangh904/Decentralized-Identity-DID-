@@ -1,17 +1,18 @@
 const { ethers } = require('ethers');
 const logger = require('../utils/logger');
 const ContractService = require('./contractService');
+const { crossChainBridgeQueue } = require('../config/queue');
 
 class CrossChainService {
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.EVM_RPC_URL || 'https://rpc2.sepolia.org');
-    
+
     // We assume the deployer's private key is provided in the environment
     const privateKey = process.env.EVM_PRIVATE_KEY || '0x0123456789012345678901234567890123456789012345678901234567890123';
     this.wallet = new ethers.Wallet(privateKey, this.provider);
-    
+
     this.ethereumContractAddress = process.env.EVM_DID_REGISTRY_ADDRESS;
-    
+
     // Minimal ABI for bridging operations
     const abi = [
       "function bridgeDID(string did, address ownerAddress, string publicKey, string serviceEndpoint) external returns (bool)",
@@ -35,7 +36,7 @@ class CrossChainService {
   async bridgeDIDToEthereum(did, ownerAddress) {
     try {
       logger.info('Bridging DID to Ethereum', { did, ownerAddress });
-      
+
       // 1. Fetch DID from Stellar
       const didDocument = await this.stellarContractService.getDID(did);
       if (!didDocument) {
@@ -56,7 +57,7 @@ class CrossChainService {
 
       logger.info('Waiting for bridge transaction to be mined...', { txHash: tx.hash });
       const receipt = await tx.wait();
-      
+
       logger.info('DID bridged successfully', { transactionHash: receipt.hash });
       return receipt;
     } catch (error) {
@@ -86,12 +87,12 @@ class CrossChainService {
       // Convert credentialId string to bytes32 format if necessary
       let bytes32Id = credentialId;
       if (!ethers.isHexString(bytes32Id)) {
-         bytes32Id = ethers.id(credentialId);
+        bytes32Id = ethers.id(credentialId);
       }
 
       let bytes32Hash = dataHash;
       if (!ethers.isHexString(bytes32Hash)) {
-         bytes32Hash = ethers.id(dataHash || credential.claims);
+        bytes32Hash = ethers.id(dataHash || credential.claims);
       }
 
       const tx = await this.ethereumContract.bridgeCredential(
@@ -105,7 +106,7 @@ class CrossChainService {
 
       logger.info('Waiting for credential bridge transaction to be mined...', { txHash: tx.hash });
       const receipt = await tx.wait();
-      
+
       logger.info('Credential bridged successfully', { transactionHash: receipt.hash });
       return receipt;
     } catch (error) {
@@ -120,7 +121,7 @@ class CrossChainService {
   async verifyCrossChainState(did) {
     try {
       const stellarDID = await this.stellarContractService.getDID(did);
-      
+
       let ethereumDID = null;
       if (this.ethereumContract) {
         try {
@@ -142,6 +143,66 @@ class CrossChainService {
     } catch (error) {
       logger.error('Failed to verify cross-chain state:', error);
       throw new Error(`Verify cross-chain state failed: ${error.message}`);
+    }
+  }
+
+  async bridgeDIDToEthereumAsync(did, ownerAddress) {
+    try {
+      const job = await crossChainBridgeQueue.add('bridge-did', { did, ownerAddress }, {
+        priority: 1,
+        removeOnComplete: false
+      });
+
+      logger.info('DID bridge job queued:', { jobId: job.id, did });
+
+      return {
+        jobId: job.id,
+        status: 'queued',
+        message: 'DID bridge queued for processing'
+      };
+    } catch (error) {
+      logger.error('Error queuing DID bridge:', error);
+      throw error;
+    }
+  }
+
+  async bridgeCredentialToEthereumAsync(credentialId, dataHash) {
+    try {
+      const job = await crossChainBridgeQueue.add('bridge-credential', { credentialId, dataHash }, {
+        priority: 1,
+        removeOnComplete: false
+      });
+
+      logger.info('Credential bridge job queued:', { jobId: job.id, credentialId });
+
+      return {
+        jobId: job.id,
+        status: 'queued',
+        message: 'Credential bridge queued for processing'
+      };
+    } catch (error) {
+      logger.error('Error queuing credential bridge:', error);
+      throw error;
+    }
+  }
+
+  async verifyCrossChainStateAsync(did) {
+    try {
+      const job = await crossChainBridgeQueue.add('verify-cross-chain-state', { did }, {
+        priority: 2,
+        removeOnComplete: false
+      });
+
+      logger.info('Cross-chain state verification job queued:', { jobId: job.id, did });
+
+      return {
+        jobId: job.id,
+        status: 'queued',
+        message: 'Cross-chain state verification queued for processing'
+      };
+    } catch (error) {
+      logger.error('Error queuing cross-chain state verification:', error);
+      throw error;
     }
   }
 }

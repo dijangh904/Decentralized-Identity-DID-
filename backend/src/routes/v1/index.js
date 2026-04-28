@@ -14,13 +14,13 @@ router.post('/contracts/create-account', async (req, res) => {
   try {
     const StellarSdk = require('stellar-sdk');
     const pair = StellarSdk.Keypair.random();
-    
+
     const accountData = {
       publicKey: pair.publicKey(),
       secretKey: pair.secret(), // This will be sent to frontend but should be handled securely
       network: stellarConfig.network,
     };
-    
+
     res.json({
       success: true,
       data: accountData,
@@ -38,18 +38,18 @@ router.post('/contracts/create-account', async (req, res) => {
 router.post('/contracts/fund-account', async (req, res) => {
   try {
     const { publicKey } = req.body;
-    
+
     if (!publicKey) {
       return res.status(400).json({
         success: false,
         error: 'Public key is required',
       });
     }
-    
+
     // Use Friendbot for testnet funding
     if (stellarConfig.network === 'TESTNET') {
       const response = await fetch(`${stellarConfig.friendbotUrl}?addr=${publicKey}`);
-      
+
       if (response.ok) {
         const result = await response.json();
         res.json({
@@ -83,9 +83,9 @@ router.get('/contracts/account/:publicKey', async (req, res) => {
     const { publicKey } = req.params;
     const StellarSdk = require('stellar-sdk');
     const server = new StellarSdk.Server(stellarConfig.horizonUrl);
-    
+
     const account = await server.loadAccount(publicKey);
-    
+
     res.json({
       success: true,
       data: {
@@ -106,20 +106,20 @@ router.get('/contracts/account/:publicKey', async (req, res) => {
 router.post('/contracts/sign-transaction', async (req, res) => {
   try {
     const { transactionXDR, secretKey } = req.body;
-    
+
     if (!transactionXDR || !secretKey) {
       return res.status(400).json({
         success: false,
         error: 'Transaction XDR and secret key are required',
       });
     }
-    
+
     const StellarSdk = require('stellar-sdk');
     const keypair = StellarSdk.Keypair.fromSecret(secretKey);
     const transaction = StellarSdk.TransactionBuilder.fromXDR(transactionXDR, stellarConfig.passphrase);
-    
+
     transaction.sign(keypair);
-    
+
     res.json({
       success: true,
       data: {
@@ -144,5 +144,6 @@ router.use('/did', require('./did'));
 router.use('/api-keys', require('./apiKeys'));
 router.use('/monitoring', require('./monitoring'));
 router.use('/qr', require('./qr'));
+router.use('/jobs', require('./jobs'));
 
 module.exports = router;
